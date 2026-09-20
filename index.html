@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="舞鶴イカ">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#14293A">
+<title>舞鶴アオリイカ</title>
+<style>
+:root{
+  --bg:#EAF1F1;--card:#FFFFFF;--ink:#14293A;--sub:#5B7180;--line:#D3DFE1;
+  --sea:#1E6178;--sea-ink:#124556;--sea-tint:#DCEBEF;
+  --mz:#F5E6BF;--mz-ink:#6B4A0B;
+  --wd:#F6D8D2;--wd-ink:#8A2A1E;
+  --hero:#14293A;--hero-ink:#EEF5F5;--hero-gold:#F2C86B;--hero-sub:#A9C0C8;
+  --danger:#B23A2C;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0E1B24;--card:#15262F;--ink:#E4EEF0;--sub:#8FA6B0;--line:#26404D;
+    --sea:#7DBFD6;--sea-ink:#BFE3EF;--sea-tint:#1C3A48;
+    --mz:#4A3B16;--mz-ink:#F1D998;
+    --wd:#4F2621;--wd-ink:#F4B9B0;
+    --hero:#1B3648;--hero-ink:#EEF5F5;--hero-gold:#F2C86B;--hero-sub:#9CB6C0;
+    --danger:#F08A7C;
+  }
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.6 "Hiragino Sans","Hiragino Kaku Gothic ProN","BIZ UDPGothic","Yu Gothic UI","Yu Gothic",Meiryo,system-ui,sans-serif;
+  font-variant-numeric:tabular-nums;
+  padding:env(safe-area-inset-top) 0 calc(72px + env(safe-area-inset-bottom));}
+.wrap{max-width:520px;margin:0 auto;padding:0 14px}
+.top{max-width:520px;margin:0 auto;padding:14px 14px 4px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.top .loc{margin:0;font-size:12px;color:var(--sub)}
+.top h1{margin:0;font-size:22px;font-weight:700;letter-spacing:.02em;line-height:1.25}
+.status{max-width:520px;margin:0 auto;padding:0 14px 8px;font-size:12px;color:var(--sub);min-height:20px}
+button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ghost{background:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--ink)}
+.btn{display:block;width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:15px}
+.btn.pri{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:700}
+.btn:disabled{opacity:.6}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.mut{color:var(--sub);font-size:13px}
+h2{font-size:15px;margin:22px 0 8px;font-weight:700}
+.wrap>.view>h2:first-child{margin-top:8px}
+
+.hero{background:var(--hero);color:var(--hero-ink);border-radius:16px;padding:18px 16px 14px}
+.hero .name{margin:0;font-size:14px;color:var(--hero-sub)}
+.hero .time{margin:2px 0 0;font-size:32px;font-weight:700;letter-spacing:.01em;color:var(--hero-gold);line-height:1.2}
+.hero .left{margin:2px 0 0;font-size:15px}
+.hero dl{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 0;padding-top:12px;border-top:1px solid rgba(255,255,255,.16)}
+.hero dt{font-size:11px;color:var(--hero-sub);margin:0}
+.hero dd{margin:1px 0 0;font-size:15px;font-weight:700}
+
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.m{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.m .l{margin:0;font-size:12px;color:var(--sub)}
+.m .v{margin:2px 0 0;font-size:20px;font-weight:700;line-height:1.35}
+.m .s{margin:0;font-size:12px;color:var(--sub)}
+.m .v svg{vertical-align:-4px;margin-right:4px}
+
+svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.chart{width:100%;height:auto;display:block}
+.chart .line{fill:none;stroke:var(--sea);stroke-width:2.2}
+.chart .band{fill:var(--mz)}
+.chart .now{stroke:var(--ink);stroke-width:1;stroke-dasharray:3 3}
+.chart text{font-size:10.5px;fill:var(--sub)}
+.chart .dot{fill:var(--sea)}
+.chart .ax{stroke:var(--line);stroke-width:1}
+
+.seg{display:flex;gap:6px;margin:6px 0 10px}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 14px;border-radius:999px;font-size:14px}
+.chip.on{background:var(--sea-tint);border-color:var(--sea);color:var(--sea-ink);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+
+.hgrid{display:grid;grid-template-columns:44px 26px minmax(0,1.15fr) 44px minmax(0,1.2fr);gap:4px;align-items:center}
+.hhead{padding:4px 8px;font-size:11px;color:var(--sub)}
+.hrow{padding:7px 8px;border-radius:8px;font-size:14px}
+.hrow.mz{background:var(--mz);color:var(--mz-ink)}
+.hrow.nowr{outline:2px solid var(--sea);outline-offset:-2px}
+.hrow b{font-weight:700}
+.hrow small{display:block;font-size:11px;color:var(--sub);line-height:1.3}
+.hrow.mz small{color:var(--mz-ink);opacity:.8}
+.hrow .w.strong{background:var(--wd);color:var(--wd-ink);border-radius:6px;padding:1px 6px;width:fit-content}
+.rows{display:flex;flex-direction:column;gap:2px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--sub);margin:10px 4px 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+
+.rec{margin-bottom:8px}
+.rec .h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.rec .spot{margin:0;font-size:16px;font-weight:700}
+.rec .dt{margin:0;font-size:12px;color:var(--sub)}
+.rec .n{margin:0;font-size:26px;font-weight:700;line-height:1.1;text-align:right}
+.rec .n span{font-size:13px;font-weight:400;margin-left:2px}
+.rec .n.zero{color:var(--sub)}
+.rec .d{margin:6px 0 0;font-size:13px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag{font-size:11px;color:var(--sub);background:var(--bg);border-radius:6px;padding:2px 8px}
+.del{background:none;border:0;color:var(--sub);font-size:12px;padding:6px 0 0;text-decoration:underline}
+.sum{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0 12px}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+.tabs button{background:none;border:0;padding:14px 0 12px;font-size:14px;color:var(--sub);border-top:3px solid transparent;margin-top:-1px}
+.tabs button.on{color:var(--ink);font-weight:700;border-top-color:var(--ink)}
+
+.sheet{position:fixed;inset:0;z-index:20;display:none}
+.sheet.open{display:block}
+.sheet .bg{position:absolute;inset:0;background:rgba(6,16,22,.55)}
+.sheet .body{position:absolute;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;max-height:94%;overflow:auto;background:var(--card);border-radius:18px 18px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom))}
+.sheet h3{margin:0 0 4px;font-size:18px}
+.lbl{display:block;margin:14px 0 6px;font-size:12px;color:var(--sub)}
+input[type=text],input[type=date],input[type=number],textarea{width:100%;font:inherit;font-size:16px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.row{display:flex;gap:8px;align-items:center}
+.step{display:flex;align-items:center;gap:14px}
+.step button{width:48px;height:42px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:22px}
+.step output{min-width:64px;text-align:center;font-size:26px;font-weight:700}
+.auto{margin-top:8px;background:var(--bg);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--sub)}
+.err{margin:6px 0 0;font-size:13px;color:var(--danger);min-height:1em}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:14px;z-index:30;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+.foot{margin:24px 0 0;font-size:11px;color:var(--sub);line-height:1.7}
+.foot input{width:90px;display:inline-block;padding:4px 8px;font-size:14px}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--sea);outline-offset:2px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <p class="loc">京都府 舞鶴</p>
+    <h1>アオリイカ</h1>
+  </div>
+  <button id="refresh" class="ghost" type="button">更新</button>
+</header>
+<p id="status" class="status" aria-live="polite"></p>
+
+<main class="wrap">
+  <section id="v-today" class="view"></section>
+  <section id="v-hourly" class="view" hidden></section>
+  <section id="v-catch" class="view" hidden></section>
+</main>
+
+<nav class="tabs" aria-label="画面の切り替え">
+  <button type="button" data-tab="today" class="on">今日</button>
+  <button type="button" data-tab="hourly">時間別</button>
+  <button type="button" data-tab="catch">釣果</button>
+</nav>
+
+<div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-t">
+  <div class="bg" data-act="close"></div>
+  <div class="body">
+    <h3 id="sh-t">釣果を記録</h3>
+
+    <span class="lbl">釣り場</span>
+    <div id="f-spots" class="chips"></div>
+    <div class="row" style="margin-top:8px">
+      <input type="text" id="f-newspot" placeholder="釣り場を追加" maxlength="12" aria-label="釣り場を追加">
+      <button type="button" class="ghost" data-act="addspot" style="white-space:nowrap">追加</button>
+    </div>
+    <p id="f-err" class="err" role="alert"></p>
+
+    <span class="lbl">日付</span>
+    <input type="date" id="f-date">
+
+    <span class="lbl">時間帯</span>
+    <div id="f-times" class="chips"></div>
+    <div id="f-auto" class="auto"></div>
+
+    <span class="lbl">釣れた数</span>
+    <div class="step">
+      <button type="button" data-act="minus" aria-label="減らす">−</button>
+      <output id="f-n">0杯</output>
+      <button type="button" data-act="plus" aria-label="増やす">＋</button>
+    </div>
+    <p class="mut" style="margin:6px 0 0">0杯も記録できます。</p>
+
+    <span class="lbl">胴長（cm）</span>
+    <div class="row">
+      <input type="number" id="f-smin" inputmode="numeric" min="0" max="80" placeholder="12">
+      <span>〜</span>
+      <input type="number" id="f-smax" inputmode="numeric" min="0" max="80" placeholder="18">
+    </div>
+
+    <span class="lbl">エギの号数</span>
+    <div id="f-egi" class="chips"></div>
+
+    <span class="lbl">メモ</span>
+    <textarea id="f-memo" rows="3" maxlength="200" placeholder="濁りあり、風が強まってから反応が落ちた"></textarea>
+
+    <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:18px">
+      <button type="button" class="btn" data-act="close">閉じる</button>
+      <button type="button" class="btn pri" id="f-save" data-act="save">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status"></div>
+<input type="file" id="importer" accept="application/json,.json" hidden>
+
+<script>
+(function(){
+'use strict';
+
+var LAT=35.475,LON=135.386;
+var MLAT=35.65,MLON=135.4;
+var STRONG=6;
+var SPOTS0=['田井','神崎','大浦','西舞鶴'];
+var SLOTS=['朝マズメ','日中','夕マズメ','夜'];
+var EGI=['2.0号','2.5号','3.0号','3.5号'];
+
+var $=function(s,r){return (r||document).querySelector(s);};
+var pad=function(n){return String(n).padStart(2,'0');};
+var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
+
+var store={
+  get:function(k,d){try{var v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},
+  set:function(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){return false;}},
+  del:function(k){try{localStorage.removeItem(k);}catch(e){}}
+};
+
+var S={wx:{},sun:{},wave:{},tide:{},rec:[],spots:[],ok:{wx:null,wave:null,tide:null},tideSrc:'',updated:null};
+var UI={tab:'today',hd:0,all:false,spot:'すべて'};
+var F={spot:'',time:'朝マズメ',egi:'',n:0};
+
+function nowJST(){
+  var p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date());
+  var o={};p.forEach(function(x){o[x.type]=x.value;});
+  return {date:o.year+'-'+o.month+'-'+o.day,h:+o.hour,m:+o.minute};
+}
+function addDays(ds,n){return new Date(Date.parse(ds+'T00:00:00Z')+n*864e5).toISOString().slice(0,10);}
+function dowJ(ds){return '日月火水木金土'[new Date(ds+'T00:00:00Z').getUTCDay()];}
+function labelDate(ds){var p=ds.split('-');return (+p[1])+'月'+(+p[2])+'日（'+dowJ(ds)+'）';}
+function mins(s){s=String(s).slice(-5);var p=s.split(':');return (+p[0])*60+(+p[1]);}
+function hm(m){m=((Math.round(m)%1440)+1440)%1440;return Math.floor(m/60)+':'+pad(m%60);}
+function dur(m){m=Math.max(0,Math.round(m));var h=Math.floor(m/60),r=m%60;return h?h+'時間'+(r?r+'分':''):r+'分';}
+
+var DIR8=['北','北東','東','南東','南','南西','西','北西'];
+function dir8(d){return d==null?'—':DIR8[Math.round(d/45)%8];}
+
+function fetchJ(u,ms){
+  var c=new AbortController(),t=setTimeout(function(){c.abort();},ms||12000);
+  return fetch(u,{signal:c.signal}).then(function(r){clearTimeout(t);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).catch(function(e){clearTimeout(t);throw e;});
+}
+
+function getWx(){
+  var u='https://api.open-meteo.com/v1/forecast?latitude='+LAT+'&longitude='+LON+
+    '&hourly=temperature_2m,precipitation_probability,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m'+
+    '&daily=sunrise,sunset&wind_speed_unit=ms&timezone=Asia%2FTokyo&past_days=2&forecast_days=4';
+  return fetchJ(u).then(function(j){
+    var h=j.hourly,wx={},sun={};
+    h.time.forEach(function(t,i){wx[t]={temp:h.temperature_2m[i],pop:h.precipitation_probability[i],code:h.weather_code[i],ws:h.wind_speed_10m[i],wd:h.wind_direction_10m[i],wg:h.wind_gusts_10m[i]};});
+    j.daily.time.forEach(function(d,i){sun[d]={rise:j.daily.sunrise[i].slice(11,16),set:j.daily.sunset[i].slice(11,16)};});
+    S.wx=wx;S.sun=sun;S.ok.wx=true;
+  }).catch(function(e){S.ok.wx=false;throw e;});
+}
+function getWave(){
+  var u='https://marine-api.open-meteo.com/v1/marine?latitude='+MLAT+'&longitude='+MLON+'&hourly=wave_height&timezone=Asia%2FTokyo&past_days=2&forecast_days=4';
+  return fetchJ(u).then(function(j){
+    var w={};j.hourly.time.forEach(function(t,i){if(j.hourly.wave_height[i]!=null)w[t]=j.hourly.wave_height[i];});
+    S.wave=w;S.ok.wave=true;
+  }).catch(function(e){S.ok.wave=false;throw e;});
+}
+
+var hcP=null;
+function tideUrl(hc,ds){var p=ds.split('-');return 'https://api.tide736.net/get_tide.php?pc=26&hc='+hc+'&yr='+p[0]+'&mn='+(+p[1])+'&dy='+(+p[2])+'&rg=day';}
+function findHc(force){
+  var saved=store.get('ika.hc',null);
+  if(saved&&!force)return Promise.resolve(saved);
+  if(!force&&Date.now()-store.get('ika.hcfail',0)<6*3600e3)return Promise.reject(new Error('cooldown'));
+  if(hcP&&!force)return hcP;
+  var ds=nowJST().date,reqs=[];
+  for(var i=1;i<=20;i++){(function(hc){
+    reqs.push(fetchJ(tideUrl(hc,ds),10000).then(function(j){
+      return {hc:hc,name:(j&&j.status==1&&j.tide&&j.tide.port)?String(j.tide.port.harbor_namej||''):''};
+    }).catch(function(){return {hc:hc,name:''};}));
+  })(i);}
+  hcP=Promise.all(reqs).then(function(r){
+    var ex=r.filter(function(x){return x.name==='舞鶴';})[0]||r.filter(function(x){return x.name.indexOf('舞鶴')>=0;})[0];
+    if(!ex){store.set('ika.hcfail',Date.now());hcP=null;throw new Error('nohc');}
+    store.set('ika.hc',ex.hc);store.del('ika.hcfail');return ex.hc;
+  });
+  return hcP;
+}
+
+function lvl(ser,h){
+  if(!ser.length)return null;
+  if(h<=ser[0][0])return ser[0][1];
+  for(var i=0;i<ser.length-1;i++){
+    if(h<=ser[i+1][0]){var a=ser[i],b=ser[i+1],f=(h-a[0])/((b[0]-a[0])||1);return a[1]+(b[1]-a[1])*f;}
+  }
+  return ser[ser.length-1][1];
+}
+function synth(ext){
+  if(ext.length<2)return [];
+  var e=ext.map(function(x){return {t:x.t,cm:x.cm};});
+  var a=e[0],b=e[1],y=e[e.length-1],z=e[e.length-2];
+  e.unshift({t:a.t-(b.t-a.t),cm:b.cm});e.push({t:y.t+(y.t-z.t),cm:z.cm});
+  var out=[];
+  for(var t=0;t<=24;t+=0.5){
+    var i=0;while(i<e.length-2&&e[i+1].t<=t)i++;
+    var p=e[i],q=e[i+1],f=Math.max(0,Math.min(1,(t-p.t)/((q.t-p.t)||1)));
+    out.push([t,p.cm+(q.cm-p.cm)*(1-Math.cos(Math.PI*f))/2]);
+  }
+  return out;
+}
+function tide736(ds){
+  return findHc().then(function(hc){return fetchJ(tideUrl(hc,ds));}).then(function(j){
+    var c=j&&j.tide&&j.tide.chart&&j.tide.chart[ds];
+    if(!c)throw new Error('nochart');
+    var ext=[];
+    (c.flood||[]).forEach(function(x){ext.push({t:mins(x.time)/60,type:'満',cm:Math.round(x.cm),time:hm(mins(x.time))});});
+    (c.edd||[]).forEach(function(x){ext.push({t:mins(x.time)/60,type:'干',cm:Math.round(x.cm),time:hm(mins(x.time))});});
+    ext.sort(function(a,b){return a.t-b.t;});
+    var ser=(c.tide||[]).map(function(x){return [mins(x.time)/60,x.cm];}).sort(function(a,b){return a[0]-b[0];});
+    if(ser.length<12)ser=synth(ext);
+    if(!ser.length)throw new Error('noser');
+    var hourly=[];for(var h=0;h<24;h++)hourly.push(Math.round(lvl(ser,h)));
+    return {ser:ser,hourly:hourly,ext:ext,moon:(c.moon&&c.moon.title)||'',src:'tide736'};
+  });
+}
+var seaP=null;
+function getSea(){
+  if(!seaP)seaP=fetchJ('https://marine-api.open-meteo.com/v1/marine?latitude='+MLAT+'&longitude='+MLON+'&hourly=sea_level_height_msl&timezone=Asia%2FTokyo&past_days=2&forecast_days=4').then(function(j){
+    var o={};j.hourly.time.forEach(function(t,i){var v=j.hourly.sea_level_height_msl[i];if(v!=null)o[t]=Math.round(v*100);});return o;
+  });
+  return seaP;
+}
+function seaTide(ds){
+  return getSea().then(function(o){
+    var hourly=[];
+    for(var h=0;h<24;h++){var v=o[ds+'T'+pad(h)+':00'];if(v==null)throw new Error('nosea');hourly.push(v);}
+    var ser=hourly.map(function(v,h){return [h,v];});ser.push([24,hourly[23]]);
+    var ext=[];
+    for(var i=1;i<23;i++){
+      if(hourly[i]>=hourly[i-1]&&hourly[i]>hourly[i+1])ext.push({t:i,type:'満',cm:hourly[i],time:i+':00'});
+      if(hourly[i]<=hourly[i-1]&&hourly[i]<hourly[i+1])ext.push({t:i,type:'干',cm:hourly[i],time:i+':00'});
+    }
+    return {ser:ser,hourly:hourly,ext:ext,moon:'',src:'model'};
+  });
+}
+function getTide(ds){
+  if(S.tide[ds])return Promise.resolve(S.tide[ds]);
+  var c=store.get('ika.tide.'+ds,null);
+  if(c){S.tide[ds]=c;return Promise.resolve(c);}
+  return tide736(ds).catch(function(){return seaTide(ds);}).then(function(d){
+    S.tide[ds]=d;S.tideSrc=d.src;
+    if(d.src==='tide736')store.set('ika.tide.'+ds,d);
+    return d;
+  });
+}
+function pruneCache(){
+  try{
+    var lim=addDays(nowJST().date,-7),del=[];
+    for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf('ika.tide.')===0&&k.slice(9)<lim)del.push(k);}
+    del.forEach(function(k){localStorage.removeItem(k);});
+  }catch(e){}
+}
+
+function tideAt(d,h){
+  var t=S.tide[d];if(!t)return null;
+  var cm=t.hourly[h],nx=h<23?t.hourly[h+1]:cm;
+  var ev=t.ext.filter(function(e){return Math.floor(e.t)===h;})[0];
+  return {cm:cm,dir:nx>cm?'上げ':(nx<cm?'下げ':'—'),ev:ev?ev.type+' '+ev.time:''};
+}
+function slotHour(d,slot){
+  var s=S.sun[d];
+  if(slot==='朝マズメ')return s?Math.floor(mins(s.rise)/60):5;
+  if(slot==='夕マズメ')return s?Math.floor(mins(s.set)/60):17;
+  return slot==='夜'?21:12;
+}
+function getConds(d,slot){
+  var h=slotHour(d,slot),k=d+'T'+pad(h)+':00',c={};
+  var w=S.wx[k];
+  if(w&&w.ws!=null)c.wind=dir8(w.wd)+' '+Math.round(w.ws)+'m';
+  if(S.wave[k]!=null)c.wave=S.wave[k].toFixed(1)+'m';
+  return getTide(d).then(function(t){if(t&&t.moon)c.tide=t.moon;return c;}).catch(function(){return c;});
+}
+
+function ico(code){
+  var P={
+    sun:'<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
+    cloud:'<path d="M7 18h10a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 7 9.5 4.3 4.3 0 0 0 7 18z"/>',
+    rain:'<path d="M7 15h10a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 7.5 7.6 3.7 3.7 0 0 0 7 15z"/><path d="M9 18l-.8 2.5M13 18l-.8 2.5M17 18l-.8 2.5"/>',
+    fog:'<path d="M4 9h16M6 13h13M4 17h16"/>',
+    snow:'<path d="M7 14h10a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 7.5 6.6 3.7 3.7 0 0 0 7 14z"/><path d="M9 18h.01M13 19h.01M17 18h.01"/>',
+    storm:'<path d="M7 14h10a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 7.5 6.6 3.7 3.7 0 0 0 7 14z"/><path d="M12 15l-2 3h3l-2 3"/>'
+  };
+  var k='cloud';
+  if(code===0||code===1)k='sun';
+  else if(code===45||code===48)k='fog';
+  else if((code>=51&&code<=67)||(code>=80&&code<=82))k='rain';
+  else if((code>=71&&code<=77)||code===85||code===86)k='snow';
+  else if(code>=95)k='storm';
+  return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">'+P[k]+'</svg>';
+}
+function wxText(code){
+  if(code===0)return '快晴';if(code===1)return '晴れ';if(code===2)return '薄曇り';if(code===3)return '曇り';
+  if(code===45||code===48)return '霧';
+  if(code>=51&&code<=57)return '霧雨';if(code>=61&&code<=67)return '雨';
+  if(code>=71&&code<=77||code===85||code===86)return '雪';
+  if(code>=80&&code<=82)return 'にわか雨';if(code>=95)return '雷雨';return '—';
+}
+function arrow(d){
+  if(d==null)return '';
+  return '<svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true" style="transform:rotate('+Math.round(d)+'deg);vertical-align:-1px;margin-right:2px" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M6 14l6 6 6-6"/></svg>';
+}
+
+function windows(d){
+  var s=S.sun[d];if(!s)return [];
+  var r=mins(s.rise),t=mins(s.set);
+  return [{k:'朝マズメ',s:r-60,e:r+60},{k:'夕マズメ',s:t-60,e:t+60}];
+}
+function nextMazume(n){
+  var ds=n.date,now=n.h*60+n.m;
+  for(var i=0;i<2;i++){
+    var d=addDays(ds,i),off=i*1440,w=windows(d);
+    for(var j=0;j<w.length;j++){
+      if(w[j].e+off>now)return {k:w[j].k,d:d,s:w[j].s,e:w[j].e,toStart:w[j].s+off-now,toEnd:w[j].e+off-now};
+    }
+  }
+  return null;
+}
+
+function renderHero(n){
+  var mz=nextMazume(n);
+  if(!mz)return '<section class="hero"><p class="name">マズメの時間を取得できませんでした</p><p class="left">右上の「更新」を押してください。</p></section>';
+  var mid=Math.floor(((mz.s+mz.e)/2)/60),k=mz.d+'T'+pad(((mid%24)+24)%24)+':00';
+  var w=S.wx[k],wv=S.wave[k],t=tideAt(mz.d,((mid%24)+24)%24);
+  var left=mz.toStart>0?'あと '+dur(mz.toStart):'いまマズメ（あと '+dur(mz.toEnd)+'）';
+  var day=mz.d===n.date?'':'明日の';
+  return '<section class="hero" aria-label="次のマズメ">'+
+    '<p class="name">'+day+mz.k+'</p>'+
+    '<p class="time">'+hm(mz.s)+'〜'+hm(mz.e)+'</p>'+
+    '<p class="left">'+left+'</p>'+
+    '<dl><div><dt>風</dt><dd>'+(w?dir8(w.wd)+' '+Math.round(w.ws)+'m':'—')+'</dd></div>'+
+    '<div><dt>波</dt><dd>'+(wv!=null?wv.toFixed(1)+'m':'—')+'</dd></div>'+
+    '<div><dt>潮</dt><dd>'+(t?t.dir+' '+t.cm+'cm':'—')+'</dd></div></dl></section>';
+}
+
+function nextTideEvent(n){
+  for(var i=0;i<3;i++){
+    var d=addDays(n.date,i),t=S.tide[d];if(!t)continue;
+    for(var j=0;j<t.ext.length;j++){
+      var e=t.ext[j];
+      if(i>0||e.t*60>n.h*60+n.m)return (i>0?'明日 ':'')+e.type+'潮 '+e.time;
+    }
+  }
+  return '';
+}
+
+function chartSvg(ds,n){
+  var t=S.tide[ds];
+  if(!t)return '<p class="mut">潮位を取得できませんでした。</p>';
+  var W=340,H=132,pl=8,pr=8,pt=16,pb=26;
+  var vals=t.ser.map(function(p){return p[1];}),mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals);
+  if(mx-mn<20){var c=(mx+mn)/2;mn=c-10;mx=c+10;}
+  var X=function(h){return pl+(W-pl-pr)*h/24;};
+  var Y=function(v){return pt+(H-pt-pb)*(1-(v-mn)/(mx-mn));};
+  var p=t.ser,d='M'+X(p[0][0]).toFixed(1)+','+Y(p[0][1]).toFixed(1);
+  for(var i=1;i<p.length-1;i++){
+    var cx=X(p[i][0]),cy=Y(p[i][1]),nx=(cx+X(p[i+1][0]))/2,ny=(cy+Y(p[i+1][1]))/2;
+    d+=' Q'+cx.toFixed(1)+','+cy.toFixed(1)+' '+nx.toFixed(1)+','+ny.toFixed(1);
+  }
+  d+=' L'+X(p[p.length-1][0]).toFixed(1)+','+Y(p[p.length-1][1]).toFixed(1);
+  var s='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img"><title>'+labelDate(ds)+'の潮位</title>';
+  windows(ds).forEach(function(w){
+    var a=Math.max(0,w.s)/60,b=Math.min(1440,w.e)/60;
+    s+='<rect class="band" x="'+X(a).toFixed(1)+'" y="'+pt+'" width="'+(X(b)-X(a)).toFixed(1)+'" height="'+(H-pt-pb)+'" rx="3"/>';
+  });
+  s+='<line class="ax" x1="'+pl+'" x2="'+(W-pr)+'" y1="'+(H-pb)+'" y2="'+(H-pb)+'"/>';
+  [0,6,12,18,24].forEach(function(h){s+='<text x="'+X(h).toFixed(1)+'" y="'+(H-pb+13)+'" text-anchor="'+(h===0?'start':(h===24?'end':'middle'))+'">'+h+'</text>';});
+  s+='<path class="line" d="'+d+'"/>';
+  t.ext.forEach(function(e){
+    var x=X(e.t),y=Y(e.cm),up=e.type==='満';
+    s+='<circle class="dot" cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="3"/>'+
+       '<text x="'+x.toFixed(1)+'" y="'+(up?y-7:y+15).toFixed(1)+'" text-anchor="middle">'+e.type+' '+e.time+'</text>';
+  });
+  if(ds===n.date){var nx=X(n.h+n.m/60);s+='<line class="now" x1="'+nx.toFixed(1)+'" x2="'+nx.toFixed(1)+'" y1="'+pt+'" y2="'+(H-pb)+'"/>';}
+  return s+'</svg>';
+}
+
+function renderToday(){
+  var n=nowJST(),ds=n.date,w=S.wx[ds+'T'+pad(n.h)+':00'],t=S.tide[ds];
+  var h=renderHero(n);
+  h+='<div class="grid2" style="margin-top:10px">';
+  h+='<div class="m"><p class="l">天気</p><p class="v">'+(w?ico(w.code)+wxText(w.code):'—')+'</p><p class="s">'+(w?Math.round(w.temp)+'℃　降水 '+(w.pop==null?'—':w.pop+'%'):'')+'</p></div>';
+  h+='<div class="m"><p class="l">風</p><p class="v">'+(w?arrow(w.wd)+dir8(w.wd)+' '+Math.round(w.ws)+'m':'—')+'</p><p class="s">'+(w&&w.wg!=null?'最大瞬間 '+Math.round(w.wg)+'m':'')+'</p></div>';
+  var wv=S.wave[ds+'T'+pad(n.h)+':00'];
+  h+='<div class="m"><p class="l">波（沖合）</p><p class="v">'+(wv!=null?wv.toFixed(1)+'m':'—')+'</p><p class="s">湾内はこれより小さめ</p></div>';
+  h+='<div class="m"><p class="l">潮回り</p><p class="v">'+((t&&t.moon)||'—')+'</p><p class="s">'+esc(nextTideEvent(n))+'</p></div>';
+  h+='</div>';
+  h+='<h2>今日の潮位</h2><div class="card">'+chartSvg(ds,n)+'<p class="mut" style="margin:4px 0 0">黄色の帯は朝夕マズメ（日の出・日の入りの前後1時間）</p></div>';
+  h+='<div class="foot">'+
+    '<p style="margin:0">天気・風：Open-Meteo（京都府舞鶴付近の予報値）。波高：Open-Meteo Marine（沖合の予報値）。潮位・潮回り：'+(S.tideSrc==='model'?'Open-Meteo Marine の海面高度モデル（潮汐表の値ではありません）':'tide736.net（海上保安庁 書誌742号の調和定数から計算した推算値）')+'。予報値は目安です。潮位は航海用ではありません。</p>'+
+    '<p style="margin:8px 0 0">潮汐の港コード：<input type="text" id="hc" inputmode="numeric" value="'+esc(store.get('ika.hc',''))+'" aria-label="港コード"> <button class="ghost" type="button" data-act="sethc">設定</button></p>'+
+  '</div>';
+  $('#v-today').innerHTML=h;
+}
+
+function renderHourly(){
+  var n=nowJST(),ds=addDays(n.date,UI.hd),labels=['今日','明日','明後日'];
+  var h='<div class="seg" role="tablist">';
+  labels.forEach(function(l,i){h+='<button type="button" class="chip'+(UI.hd===i?' on':'')+'" data-hd="'+i+'">'+l+'</button>';});
+  h+='</div><p style="margin:0 0 6px;font-size:16px;font-weight:700">'+labelDate(ds)+'</p>';
+  h+='<div class="hgrid hhead"><span>時刻</span><span></span><span>風</span><span>波</span><span>潮位（cm）</span></div><div class="rows">';
+  var from=UI.all?0:4,to=UI.all?23:20,wins=windows(ds);
+  for(var hr=from;hr<=to;hr++){
+    var k=ds+'T'+pad(hr)+':00',w=S.wx[k],wv=S.wave[k],td=tideAt(ds,hr);
+    var mz=wins.some(function(x){return x.s<(hr+1)*60&&x.e>hr*60;});
+    var isNow=ds===n.date&&hr===n.h;
+    var strong=w&&w.ws>=STRONG;
+    h+='<div class="hgrid hrow'+(mz?' mz':'')+(isNow?' nowr':'')+'">'+
+      '<b>'+hr+'時</b>'+
+      '<span>'+(w?ico(w.code):'')+'</span>'+
+      '<span><span class="w'+(strong?' strong':'')+'">'+(w?arrow(w.wd)+dir8(w.wd)+' '+Math.round(w.ws)+'m':'—')+'</span>'+(w&&w.wg!=null?'<small>瞬間 '+Math.round(w.wg)+'m</small>':'')+'</span>'+
+      '<span>'+(wv!=null?wv.toFixed(1)+'m':'—')+'</span>'+
+      '<span>'+(td?td.cm+' <small style="display:inline">'+(td.ev?td.ev:td.dir)+'</small>':'—')+'</span>'+
+    '</div>';
+  }
+  h+='</div>';
+  h+='<div class="legend"><span><i style="background:var(--mz)"></i>マズメ</span><span><i style="background:var(--wd)"></i>風 '+STRONG+'m以上</span><span><i style="outline:2px solid var(--sea);outline-offset:-2px"></i>いま</span></div>';
+  h+='<p style="margin:14px 0 0"><button type="button" class="ghost" data-act="toggleall">'+(UI.all?'4〜20時だけ表示':'24時間表示')+'</button></p>';
+  $('#v-hourly').innerHTML=h;
+}
+
+function saveRec(){store.set('ika.rec.v1',S.rec);}
+function sortRec(){S.rec.sort(function(a,b){return a.date<b.date?1:(a.date>b.date?-1:(b.ts||0)-(a.ts||0));});}
+function renderCatch(){
+  var spots=['すべて'].concat(S.spots);
+  var rows=S.rec.filter(function(r){return UI.spot==='すべて'||r.spot===UI.spot;});
+  var sum=rows.reduce(function(a,r){return a+r.n;},0);
+  var h='<div class="sum"><div class="m"><p class="l">合計</p><p class="v">'+sum+'杯</p></div><div class="m"><p class="l">記録数</p><p class="v">'+rows.length+'件</p></div></div>';
+  h+='<div class="chips" style="margin-bottom:12px">';
+  spots.forEach(function(s){h+='<button type="button" class="chip'+(UI.spot===s?' on':'')+'" data-spot="'+esc(s)+'">'+esc(s)+'</button>';});
+  h+='</div><button type="button" class="btn pri" data-act="open">釣果を記録</button><div style="height:12px"></div>';
+  if(!rows.length){
+    h+='<p class="mut">'+(S.rec.length?'この釣り場の記録はありません。':'まだ記録がありません。釣行のあとに「釣果を記録」から追加できます。')+'</p>';
+  }
+  rows.forEach(function(r){
+    var zero=r.n===0,tags='';
+    [r.wind&&'風 '+r.wind,r.wave&&'波 '+r.wave,r.tide].forEach(function(x){if(x)tags+='<span class="tag">'+esc(x)+'</span>';});
+    var size=(r.smin||r.smax)?'胴長 '+(r.smin||'?')+'〜'+(r.smax||'?')+'cm':'';
+    var det=[size,r.egi?'エギ '+r.egi:''].filter(Boolean).join('　');
+    h+='<article class="card rec"><div class="h"><div><p class="spot">'+esc(r.spot)+'</p><p class="dt">'+labelDate(r.date)+'　'+esc(r.slot)+'</p></div>'+
+      '<p class="n'+(zero?' zero':'')+'">'+r.n+'<span>杯</span></p></div>'+
+      (det?'<p class="d">'+esc(det)+'</p>':'')+
+      (r.memo?'<p class="d mut">'+esc(r.memo)+'</p>':'')+
+      (tags?'<div class="tags">'+tags+'</div>':'')+
+      '<button type="button" class="del" data-del="'+esc(r.id)+'">削除</button></article>';
+  });
+  h+='<div class="foot"><p style="margin:0">記録はこの端末のブラウザに保存されます。機種変更やデータ消去に備えて、ときどき書き出してください。</p>'+
+    '<p style="margin:8px 0 0"><button type="button" class="ghost" data-act="export">書き出し</button> <button type="button" class="ghost" data-act="import">読み込み</button></p></div>';
+  $('#v-catch').innerHTML=h;
+}
+
+function renderAll(){renderToday();renderHourly();renderCatch();}
+
+function setStatus(){
+  var o=S.ok,mark=function(v){return v===null?'…':(v?'○':'×');};
+  var tideOk=Object.keys(S.tide).length?true:(S.ok.tide===false?false:null);
+  var n=nowJST();
+  $('#status').textContent='更新 '+n.h+':'+pad(n.m)+'　天気 '+mark(o.wx)+'　波 '+mark(o.wave)+'　潮 '+mark(tideOk)+(S.tideSrc==='model'?'（モデル値）':'');
+}
+
+function load(){
+  S.ok={wx:null,wave:null,tide:null};S.tide={};seaP=null;
+  $('#status').textContent='取得中…';
+  var a=getWx().catch(function(){}),b=getWave().catch(function(){});
+  Promise.all([a,b]).then(function(){
+    renderAll();setStatus();
+    var n=nowJST();
+    return Promise.all([0,1,2].map(function(i){return getTide(addDays(n.date,i)).catch(function(){});}));
+  }).then(function(){
+    S.ok.tide=Object.keys(S.tide).length>0;
+    S.updated=Date.now();renderAll();setStatus();
+  });
+}
+
+function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){t.classList.remove('show');},2000);}
+
+function chip(container,arr,key,clearable,fmt){
+  var el=$(container);el.innerHTML='';
+  arr.forEach(function(x){
+    var b=document.createElement('button');b.type='button';b.className='chip'+(F[key]===x?' on':'');b.textContent=fmt?fmt(x):x;
+    b.onclick=function(){F[key]=(clearable&&F[key]===x)?'':x;if(key==='spot')$('#f-err').textContent='';drawForm();};
+    el.appendChild(b);
+  });
+}
+function drawForm(){
+  chip('#f-spots',S.spots,'spot',false);
+  chip('#f-times',SLOTS,'time',false);
+  chip('#f-egi',EGI,'egi',true);
+  $('#f-n').textContent=F.n+'杯';
+  var d=$('#f-date').value,h=slotHour(d,F.time),k=d+'T'+pad(h)+':00',w=S.wx[k],parts=[];
+  if(w&&w.ws!=null)parts.push('風 '+dir8(w.wd)+' '+Math.round(w.ws)+'m');
+  if(S.wave[k]!=null)parts.push('波 '+S.wave[k].toFixed(1)+'m');
+  if(S.tide[d]&&S.tide[d].moon)parts.push(S.tide[d].moon);
+  $('#f-auto').textContent=parts.length?'保存時に自動で記録：'+parts.join('・'):'この日の風・波・潮の予報値が取得できないため、状況は記録されません。';
+}
+function openSheet(){
+  F={spot:'',time:'朝マズメ',egi:'',n:0};
+  $('#f-date').value=nowJST().date;$('#f-smin').value='';$('#f-smax').value='';$('#f-memo').value='';$('#f-newspot').value='';$('#f-err').textContent='';
+  drawForm();$('#sheet').classList.add('open');document.body.style.overflow='hidden';
+}
+function closeSheet(){$('#sheet').classList.remove('open');document.body.style.overflow='';}
+function submit(){
+  if(!F.spot){$('#f-err').textContent='釣り場を選んでください';return;}
+  var d=$('#f-date').value;
+  if(!d){$('#f-err').textContent='日付を入力してください';return;}
+  var btn=$('#f-save');btn.disabled=true;btn.textContent='保存中…';
+  getConds(d,F.time).then(function(c){
+    S.rec.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),ts:Date.now(),date:d,slot:F.time,spot:F.spot,n:F.n,
+      smin:$('#f-smin').value,smax:$('#f-smax').value,egi:F.egi,memo:$('#f-memo').value.trim(),wind:c.wind||'',wave:c.wave||'',tide:c.tide||''});
+    sortRec();saveRec();closeSheet();renderCatch();toast('保存しました');
+  }).then(function(){btn.disabled=false;btn.textContent='保存';},function(){btn.disabled=false;btn.textContent='保存';});
+}
+
+function exportJ(){
+  var blob=new Blob([JSON.stringify({v:1,rec:S.rec,spots:S.spots},null,1)],{type:'application/json'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='maizuru-ika-'+nowJST().date+'.json';
+  document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+}
+function importJ(file){
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var j=JSON.parse(r.result),ids={};S.rec.forEach(function(x){ids[x.id]=1;});
+      var add=(j.rec||[]).filter(function(x){return x&&x.id&&x.date&&!ids[x.id];});
+      S.rec=S.rec.concat(add);
+      (j.spots||[]).forEach(function(s){if(S.spots.indexOf(s)<0)S.spots.push(s);});
+      sortRec();saveRec();store.set('ika.spots',S.spots);renderCatch();toast(add.length+'件を読み込みました');
+    }catch(e){toast('読み込めませんでした');}
+  };
+  r.readAsText(file);
+}
+
+function setTab(t){
+  UI.tab=t;
+  ['today','hourly','catch'].forEach(function(k){$('#v-'+k).hidden=k!==t;});
+  document.querySelectorAll('.tabs button').forEach(function(b){b.classList.toggle('on',b.dataset.tab===t);});
+  window.scrollTo(0,0);
+}
+
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-tab],[data-hd],[data-spot],[data-del],[data-act]');
+  if(!t)return;
+  if(t.dataset.tab){setTab(t.dataset.tab);return;}
+  if(t.dataset.hd!=null){UI.hd=+t.dataset.hd;renderHourly();return;}
+  if(t.dataset.spot){UI.spot=t.dataset.spot;renderCatch();return;}
+  if(t.dataset.del){
+    if(confirm('この記録を削除しますか？')){S.rec=S.rec.filter(function(r){return r.id!==t.dataset.del;});saveRec();renderCatch();}
+    return;
+  }
+  var a=t.dataset.act;
+  if(a==='open')openSheet();
+  else if(a==='close')closeSheet();
+  else if(a==='minus'){if(F.n>0)F.n--;drawForm();}
+  else if(a==='plus'){F.n++;drawForm();}
+  else if(a==='addspot'){
+    var v=$('#f-newspot').value.trim();
+    if(v){if(S.spots.indexOf(v)<0){S.spots.push(v);store.set('ika.spots',S.spots);}F.spot=v;$('#f-newspot').value='';$('#f-err').textContent='';drawForm();}
+  }
+  else if(a==='save')submit();
+  else if(a==='toggleall'){UI.all=!UI.all;renderHourly();}
+  else if(a==='export')exportJ();
+  else if(a==='import')$('#importer').click();
+  else if(a==='sethc'){
+    var v2=parseInt($('#hc').value,10);
+    if(v2>0){
+      store.set('ika.hc',v2);store.del('ika.hcfail');hcP=null;
+      Object.keys(S.tide).forEach(function(k){store.del('ika.tide.'+k);});
+      load();toast('港コードを設定しました');
+    }else{
+      store.del('ika.hc');store.del('ika.hcfail');hcP=null;
+      Object.keys(S.tide).forEach(function(k){store.del('ika.tide.'+k);});
+      load();toast('港コードを自動検出します');
+    }
+  }
+});
+$('#refresh').addEventListener('click',function(){load();});
+$('#f-date').addEventListener('change',drawForm);
+$('#importer').addEventListener('change',function(e){var f=e.target.files[0];if(f)importJ(f);e.target.value='';});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeSheet();});
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden&&S.updated&&Date.now()-S.updated>20*60*1000)load();
+});
+
+S.rec=store.get('ika.rec.v1',[]);sortRec();
+S.spots=store.get('ika.spots',SPOTS0.slice());
+S.rec.forEach(function(r){if(S.spots.indexOf(r.spot)<0)S.spots.push(r.spot);});
+pruneCache();
+renderAll();
+load();
+})();
+</script>
+</body>
+</html>
