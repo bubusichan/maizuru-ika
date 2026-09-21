@@ -376,18 +376,25 @@ function tideUrl(hc,ds){var p=ds.split('-');return 'https://api.tide736.net/get_
 function findHc(force){
   var saved=store.get('ika.hc',null);
   if(saved&&!force)return Promise.resolve(saved);
-  if(!force&&Date.now()-store.get('ika.hcfail',0)<6*3600e3)return Promise.reject(new Error('cooldown'));
+  if(!force&&Date.now()-store.get('ika.hcfail',0)<24*3600e3)return Promise.reject(new Error('cooldown'));
   if(hcP&&!force)return hcP;
   var ds=nowJST().date,reqs=[];
   for(var i=1;i<=20;i++){(function(hc){
     reqs.push(fetchJ(tideUrl(hc,ds),10000).then(function(j){
-      return {hc:hc,name:(j&&j.status==1&&j.tide&&j.tide.port)?String(j.tide.port.harbor_namej||''):''};
-    }).catch(function(){return {hc:hc,name:''};}));
+      return {hc:hc,ok:true,name:(j&&j.status==1&&j.tide&&j.tide.port)?String(j.tide.port.harbor_namej||''):''};
+    }).catch(function(){return {hc:hc,ok:false,name:''};}));
   })(i);}
   hcP=Promise.all(reqs).then(function(r){
+    var okc=r.filter(function(x){return x.ok;}).length;
     var ex=r.filter(function(x){return x.name==='舞鶴';})[0]||r.filter(function(x){return x.name.indexOf('舞鶴')>=0;})[0];
-    if(!ex){store.set('ika.hcfail',Date.now());hcP=null;throw new Error('nohc');}
-    store.set('ika.hc',ex.hc);store.del('ika.hcfail');return ex.hc;
+    if(!ex){
+      var names=r.filter(function(x){return x.name;}).map(function(x){return x.name+'='+x.hc;}).join('、');
+      store.set('ika.hcfail',Date.now());
+      store.set('ika.hcdiag',okc===0?'取得先に接続できませんでした（通信の問題、またはブラウザに拒否されました）':'舞鶴の港が見つかりませんでした。見つかった港：'+(names||'なし'));
+      hcP=null;throw new Error('nohc');
+    }
+    store.set('ika.hc',ex.hc);store.del('ika.hcfail');store.set('ika.hcdiag','港コード '+ex.hc+'（'+ex.name+'）で取得できています');
+    return ex.hc;
   });
   return hcP;
 }
@@ -608,6 +615,7 @@ function renderToday(){
   h+='<h2>今日の潮位</h2><div class="card">'+chartSvg(ds,n)+'<p class="mut" style="margin:4px 0 0">黄色の帯は朝夕マズメ（日の出・日の入りの前後1時間）</p></div>';
   h+='<div class="foot">'+
     '<p style="margin:0">天気・風：Open-Meteo（選んだ場所の予報値。位置の精度は数km単位です）。波高：Open-Meteo Marine（海の予報モデルの値。湾内は反映されにくく、沖合の値になることがあります）。潮位・潮回り：'+(S.tideSrc==='model'?'Open-Meteo Marine の海面高度モデル（潮汐表の値ではありません）':'tide736.net（海上保安庁 書誌742号の調和定数から計算した推算値）')+'。予報値は目安です。潮位・潮回りは、どの釣り場でも舞鶴の値です。潮位は航海用ではありません。潮回りは、潮汐表にない日や取得できない場合は、0時の月と太陽の位置（気象庁の区分）から計算します。釣具店の潮見表と1日ずれることがあります。</p>'+
+    '<p style="margin:8px 0 0">潮汐表の取得状況：'+esc(store.get('ika.hcdiag','まだ確認していません'))+'</p>'+
     '<p style="margin:8px 0 0">潮汐の港コード：<input type="text" id="hc" inputmode="numeric" value="'+esc(store.get('ika.hc',''))+'" aria-label="港コード"> <button class="ghost" type="button" data-act="sethc">設定</button></p>'+
   '</div>';
   $('#v-today').innerHTML=h;
