@@ -733,18 +733,34 @@ function useHere(name){
   toast('位置を取得しています…');
   navigator.geolocation.getCurrentPosition(function(p){setPos(name,p.coords.latitude,p.coords.longitude);},function(){toast('位置を取得できませんでした。設定で位置情報を許可してください');},{enableHighAccuracy:false,timeout:15000,maximumAge:60000});
 }
-function findSpot(name){
-  var q=prompt('探したい地名を入力してください（例：田井）',name);
-  if(!q)return;
-  fetchJ('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(q)+'&count=20&language=ja&countryCode=JP').then(function(j){
-    var r=(j.results||[]).map(function(x){
-      return {label:x.name+'（'+[x.admin1,x.admin2||x.admin3].filter(Boolean).join(' ')+'）',lat:x.latitude,lon:x.longitude,o:(x.admin1==='京都府'||x.admin1==='福井県')?0:1};
+function geoGsi(q){
+  return fetchJ('https://msearch.gsi.go.jp/address-search/AddressSearch?q='+encodeURIComponent(q)).then(function(a){
+    return (Array.isArray(a)?a:[]).filter(function(x){return x&&x.geometry&&x.geometry.coordinates;}).map(function(x){
+      var c=x.geometry.coordinates;return {label:(x.properties&&x.properties.title)||q,lat:c[1],lon:c[0]};
     });
-    r.sort(function(a,b){return a.o-b.o;});
+  });
+}
+function geoOm(q){
+  return fetchJ('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(q)+'&count=20&language=ja&countryCode=JP').then(function(j){
+    return (j.results||[]).map(function(x){return {label:x.name+'（'+[x.admin1,x.admin2||x.admin3].filter(Boolean).join(' ')+'）',lat:x.latitude,lon:x.longitude};});
+  });
+}
+function findSpot(name){
+  var q=prompt('住所や施設名で入力してください（例：舞鶴市田井、西舞鶴駅）',name);
+  if(!q)return;
+  q=q.trim();
+  if(!q)return;
+  toast('探しています…');
+  geoGsi(q).catch(function(){return [];}).then(function(r){
+    return r.length?r:geoOm(q).catch(function(){return null;});
+  }).then(function(r){
+    if(r===null){toast('検索できませんでした。通信を確認してください');return;}
+    var near=function(x){return (x.lat>35.2&&x.lat<35.8&&x.lon>134.9&&x.lon<135.8)?0:1;};
+    r.sort(function(a,b){return near(a)-near(b);});
     UI.found={spot:name,list:r.slice(0,8)};
-    if(!r.length)toast('見つかりませんでした');
+    if(!r.length)toast('見つかりませんでした。「舞鶴市田井」のように市名から入力してみてください');
     renderSpotSheet();
-  },function(){toast('検索できませんでした');});
+  });
 }
 
 var idbP=null;
