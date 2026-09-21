@@ -144,6 +144,15 @@ input[type=text],input[type=date],input[type=number],textarea{width:100%;font:in
 .wk b{font-size:13px;font-weight:700}
 .wk .big{background:var(--sea-tint);border-color:var(--sea)}
 .wk .td{outline:2px solid var(--ink);outline-offset:-2px}
+.areabar{max-width:520px;margin:0 auto;padding:0 14px 8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.agg{display:grid;grid-template-columns:minmax(0,1.3fr) 40px 52px 40px 52px;gap:4px;align-items:center;width:100%;padding:8px 6px;font-size:13px;text-align:right;background:none;border:0;border-bottom:1px solid var(--line);color:var(--ink);border-radius:0}
+.agg:last-child{border-bottom:0}
+.agg>b{text-align:left;font-size:14px}
+.agg.hd{font-size:11px;color:var(--sub);padding-bottom:4px}
+.agg.hd span:first-child{text-align:left}
+.agg.on{background:var(--sea-tint);border-radius:8px}
+.pick{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.pick button{text-align:left;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);font-size:14px}
 .foot{margin:24px 0 0;font-size:11px;color:var(--sub);line-height:1.7}
 .foot input{width:90px;display:inline-block;padding:4px 8px;font-size:14px}
 @media (prefers-reduced-motion:reduce){#toast{transition:none}}
@@ -160,6 +169,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <button id="refresh" class="ghost" type="button">更新</button>
 </header>
 <p id="status" class="status" aria-live="polite"></p>
+
+<div id="areabar" class="areabar"></div>
 
 <main class="wrap">
   <section id="v-today" class="view"></section>
@@ -227,6 +238,21 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   </div>
 </div>
 
+<div id="spsheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sp-t">
+  <div class="bg" data-act="spclose"></div>
+  <div class="body">
+    <h3 id="sp-t">釣り場と予報の位置</h3>
+    <p class="mut" style="margin:0 0 10px">位置を設定した釣り場は、画面上の「予報の場所」で切り替えると、その地点の天気・風・波を見られます。</p>
+    <div id="sp-list"></div>
+    <span class="lbl">釣り場を追加</span>
+    <div class="row">
+      <input type="text" id="sp-new" placeholder="釣り場の名前" maxlength="12" aria-label="釣り場の名前">
+      <button type="button" class="ghost" data-act="spadd" style="white-space:nowrap">追加</button>
+    </div>
+    <button type="button" class="btn" data-act="spclose" style="margin-top:16px">閉じる</button>
+  </div>
+</div>
+
 <div id="toast" role="status"></div>
 <input type="file" id="importer" class="vh" accept="application/json,.json" tabindex="-1" aria-hidden="true">
 <div id="lb" class="lb" role="dialog" aria-label="写真" data-act="closelb"><img alt="拡大した写真"></div>
@@ -252,8 +278,8 @@ var store={
   del:function(k){try{localStorage.removeItem(k);}catch(e){}}
 };
 
-var S={wx:{},sun:{},wave:{},tide:{},rec:[],spots:[],ok:{wx:null,wave:null,tide:null},tideSrc:'',updated:null};
-var UI={tab:'today',hd:0,all:false,spot:'すべて'};
+var S={wx:{},sun:{},wave:{},tide:{},rec:[],spots:[],ok:{wx:null,wave:null,tide:null},tideSrc:'',updated:null,pos:{},areaCache:{},waveOff:false};
+var UI={tab:'today',hd:0,all:false,spot:'すべて',area:'舞鶴',found:null};
 var F={spot:'',time:'朝マズメ',egi:'',n:0,photos:[]};
 var MAXPH=3;
 
@@ -296,24 +322,41 @@ function fetchJ(u,ms){
   return fetch(u,{signal:c.signal}).then(function(r){clearTimeout(t);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).catch(function(e){clearTimeout(t);throw e;});
 }
 
-function getWx(){
-  var u='https://api.open-meteo.com/v1/forecast?latitude='+LAT+'&longitude='+LON+
+function areaPos(name){return (name!=='舞鶴'&&S.pos[name])?S.pos[name]:{lat:LAT,lon:LON};}
+function fetchWx(pos){
+  var u='https://api.open-meteo.com/v1/forecast?latitude='+pos.lat+'&longitude='+pos.lon+
     '&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m'+
     '&daily=sunrise,sunset&wind_speed_unit=ms&timezone=Asia%2FTokyo&past_days=2&forecast_days=4';
   return fetchJ(u).then(function(j){
     var h=j.hourly,wx={},sun={};
     h.time.forEach(function(t,i){wx[t]={temp:h.temperature_2m[i],pop:h.precipitation_probability[i],rain:h.precipitation?h.precipitation[i]:null,code:h.weather_code[i],ws:h.wind_speed_10m[i],wd:h.wind_direction_10m[i],wg:h.wind_gusts_10m[i]};});
     j.daily.time.forEach(function(d,i){sun[d]={rise:j.daily.sunrise[i].slice(11,16),set:j.daily.sunset[i].slice(11,16)};});
-    S.wx=wx;S.sun=sun;S.ok.wx=true;
-  }).catch(function(e){S.ok.wx=false;throw e;});
+    return {wx:wx,sun:sun};
+  });
 }
-function getWave(){
-  var u='https://marine-api.open-meteo.com/v1/marine?latitude='+MLAT+'&longitude='+MLON+'&hourly=wave_height&timezone=Asia%2FTokyo&past_days=2&forecast_days=4';
-  return fetchJ(u).then(function(j){
-    var w={};j.hourly.time.forEach(function(t,i){if(j.hourly.wave_height[i]!=null)w[t]=j.hourly.wave_height[i];});
-    S.wave=w;S.ok.wave=true;
-  }).catch(function(e){S.ok.wave=false;throw e;});
+function marineQ(la,lo){
+  return fetchJ('https://marine-api.open-meteo.com/v1/marine?latitude='+la+'&longitude='+lo+'&hourly=wave_height&timezone=Asia%2FTokyo&past_days=2&forecast_days=4').then(function(j){
+    var w={},n=0;
+    j.hourly.time.forEach(function(t,i){var v=j.hourly.wave_height[i];if(v!=null){w[t]=v;n++;}});
+    return {w:w,n:n};
+  });
 }
+function fetchWave(name){
+  var off=function(){return marineQ(MLAT,MLON).then(function(r){return {w:r.w,off:true};});};
+  if(name==='舞鶴'||!S.pos[name])return off();
+  var p=S.pos[name];
+  return marineQ(p.lat,p.lon).then(function(r){return r.n>0?{w:r.w,off:false}:off();},off);
+}
+function loadAreaData(name){
+  var c=S.areaCache[name];
+  if(c&&Date.now()-c.t<20*60000)return Promise.resolve(c);
+  var pos=areaPos(name),e={wx:{},sun:{},wave:{},off:false,okWx:false,okWave:false,t:Date.now()};
+  return Promise.all([
+    fetchWx(pos).then(function(r){e.wx=r.wx;e.sun=r.sun;e.okWx=true;},function(){}),
+    fetchWave(name).then(function(r){e.wave=r.w;e.off=r.off;e.okWave=true;},function(){})
+  ]).then(function(){if(e.okWx&&e.okWave)S.areaCache[name]=e;return e;});
+}
+function applyArea(e){S.wx=e.wx;S.sun=e.sun;S.wave=e.wave;S.ok.wx=e.okWx;S.ok.wave=e.okWave;S.waveOff=e.off;}
 
 var hcP=null;
 function tideUrl(hc,ds){var p=ds.split('-');return 'https://api.tide736.net/get_tide.php?pc=26&hc='+hc+'&yr='+p[0]+'&mn='+(+p[1])+'&dy='+(+p[2])+'&rg=day';}
@@ -416,18 +459,19 @@ function tideAt(d,h){
   var ev=t.ext.filter(function(e){return Math.floor(e.t)===h;})[0];
   return {cm:cm,dir:nx>cm?'上げ':(nx<cm?'下げ':'—'),ev:ev?ev.type+' '+ev.time:''};
 }
-function slotHour(d,slot){
-  var s=S.sun[d];
+function slotHour(d,slot,s){
+  if(s===undefined)s=S.sun[d];
   if(slot==='朝マズメ')return s?Math.floor(mins(s.rise)/60):5;
   if(slot==='夕マズメ')return s?Math.floor(mins(s.set)/60):17;
   return slot==='夜'?21:12;
 }
-function getConds(d,slot){
-  var h=slotHour(d,slot),k=d+'T'+pad(h)+':00',c={};
-  var w=S.wx[k];
-  if(w&&w.ws!=null)c.wind=dir8(w.wd)+' '+Math.round(w.ws)+'m';
-  if(S.wave[k]!=null)c.wave=S.wave[k].toFixed(1)+'m';
-  return getTide(d).then(function(){c.tide=shio(d);return c;},function(){c.tide=shio(d);return c;});
+function getConds(d,slot,spot){
+  var name=(spot&&S.pos[spot])?spot:'舞鶴',c={};
+  return loadAreaData(name).then(function(e){
+    var h=slotHour(d,slot,e.sun[d]),k=d+'T'+pad(h)+':00',w=e.wx[k];
+    if(w&&w.ws!=null)c.wind=dir8(w.wd)+' '+Math.round(w.ws)+'m';
+    if(e.wave[k]!=null)c.wave=e.wave[k].toFixed(1)+'m';
+  }).then(function(){return getTide(d);}).then(function(){c.tide=shio(d);return c;},function(){c.tide=shio(d);return c;});
 }
 
 function ico(code){
@@ -540,7 +584,7 @@ function renderToday(){
   h+='<div class="m"><p class="l">天気</p><p class="v">'+(w?ico(w.code)+wxText(w.code):'—')+'</p><p class="s">'+(w?Math.round(w.temp)+'℃　降水 '+(w.pop==null?'—':w.pop+'%'):'')+'</p></div>';
   h+='<div class="m"><p class="l">風</p><p class="v">'+(w?arrow(w.wd)+dir8(w.wd)+' '+Math.round(w.ws)+'m':'—')+'</p><p class="s">'+(w&&w.wg!=null?'最大瞬間 '+Math.round(w.wg)+'m':'')+'</p></div>';
   var wv=S.wave[ds+'T'+pad(n.h)+':00'];
-  h+='<div class="m"><p class="l">波（沖合）</p><p class="v">'+(wv!=null?wv.toFixed(1)+'m':'—')+'</p><p class="s">湾内はこれより小さめ</p></div>';
+  h+='<div class="m"><p class="l">波</p><p class="v">'+(wv!=null?wv.toFixed(1)+'m':'—')+'</p><p class="s">'+(S.waveOff?'沖合の値（湾内は小さめ）':'この場所の予報値')+'</p></div>';
   h+='<div class="m"><p class="l">潮回り</p><p class="v">'+shio(ds)+'</p><p class="s">'+esc(nextTideEvent(n))+'</p></div>';
   h+='</div>';
   h+='<h2>今週の潮回り</h2><div class="wk">';
@@ -551,7 +595,7 @@ function renderToday(){
   h+='</div>';
   h+='<h2>今日の潮位</h2><div class="card">'+chartSvg(ds,n)+'<p class="mut" style="margin:4px 0 0">黄色の帯は朝夕マズメ（日の出・日の入りの前後1時間）</p></div>';
   h+='<div class="foot">'+
-    '<p style="margin:0">天気・風：Open-Meteo（京都府舞鶴付近の予報値）。波高：Open-Meteo Marine（沖合の予報値）。潮位・潮回り：'+(S.tideSrc==='model'?'Open-Meteo Marine の海面高度モデル（潮汐表の値ではありません）':'tide736.net（海上保安庁 書誌742号の調和定数から計算した推算値）')+'。予報値は目安です。潮位は航海用ではありません。潮回りは、潮汐表にない日や取得できない場合は、0時の月と太陽の位置（気象庁の区分）から計算します。釣具店の潮見表と1日ずれることがあります。</p>'+
+    '<p style="margin:0">天気・風：Open-Meteo（選んだ場所の予報値。位置の精度は数km単位です）。波高：Open-Meteo Marine（海の予報モデルの値。湾内は反映されにくく、沖合の値になることがあります）。潮位・潮回り：'+(S.tideSrc==='model'?'Open-Meteo Marine の海面高度モデル（潮汐表の値ではありません）':'tide736.net（海上保安庁 書誌742号の調和定数から計算した推算値）')+'。予報値は目安です。潮位・潮回りは、どの釣り場でも舞鶴の値です。潮位は航海用ではありません。潮回りは、潮汐表にない日や取得できない場合は、0時の月と太陽の位置（気象庁の区分）から計算します。釣具店の潮見表と1日ずれることがあります。</p>'+
     '<p style="margin:8px 0 0">潮汐の港コード：<input type="text" id="hc" inputmode="numeric" value="'+esc(store.get('ika.hc',''))+'" aria-label="港コード"> <button class="ghost" type="button" data-act="sethc">設定</button></p>'+
   '</div>';
   $('#v-today').innerHTML=h;
@@ -593,6 +637,15 @@ function renderCatch(){
   var rows=S.rec.filter(function(r){return UI.spot==='すべて'||r.spot===UI.spot;});
   var sum=rows.reduce(function(a,r){return a+r.n;},0);
   var h='<div class="sum"><div class="m"><p class="l">合計</p><p class="v">'+sum+'杯</p></div><div class="m"><p class="l">記録数</p><p class="v">'+rows.length+'件</p></div></div>';
+  var by={};
+  S.rec.forEach(function(r){var o=by[r.spot]||(by[r.spot]={n:0,sum:0,hit:0});o.n++;o.sum+=r.n;if(r.n>0)o.hit++;});
+  var names=Object.keys(by).sort(function(a,b){return by[b].sum-by[a].sum;});
+  if(names.length){
+    h+='<h2 style="margin-top:6px">釣り場別</h2><div class="card" style="padding:6px 8px"><div class="agg hd"><span>釣り場</span><span>回数</span><span>合計</span><span>平均</span><span>釣れた</span></div>';
+    names.forEach(function(nm){var o=by[nm];
+      h+='<button type="button" class="agg'+(UI.spot===nm?' on':'')+'" data-spot="'+esc(nm)+'"><b>'+esc(nm)+'</b><span>'+o.n+'</span><span>'+o.sum+'杯</span><span>'+(o.sum/o.n).toFixed(1)+'</span><span>'+Math.round(o.hit/o.n*100)+'%</span></button>';});
+    h+='</div><p class="mut" style="margin:6px 4px 12px;font-size:11px">平均は1回あたりの杯数、「釣れた」は1杯以上釣れた回の割合です。行をタップすると、その釣り場だけを下の一覧に表示します。</p>';
+  }
   h+='<div class="chips" style="margin-bottom:12px">';
   spots.forEach(function(s){h+='<button type="button" class="chip'+(UI.spot===s?' on':'')+'" data-spot="'+esc(s)+'">'+esc(s)+'</button>';});
   h+='</div><button type="button" class="btn pri" data-act="open">釣果を記録</button><div style="height:12px"></div>';
@@ -618,7 +671,15 @@ function renderCatch(){
   loadPhotos();
 }
 
-function renderAll(){renderToday();renderHourly();renderCatch();}
+function renderAreaBar(){
+  var names=['舞鶴'].concat(S.spots.filter(function(x){return S.pos[x];}));
+  var h='<span class="mut" style="font-size:12px">予報の場所</span>';
+  names.forEach(function(n){h+='<button type="button" class="chip'+(UI.area===n?' on':'')+'" data-area="'+esc(n)+'">'+esc(n)+'</button>';});
+  h+='<button type="button" class="ghost" data-act="spots">釣り場を設定</button>';
+  $('#areabar').innerHTML=h;
+  $('.top .loc').textContent='京都府 舞鶴'+(UI.area==='舞鶴'?'':'（'+UI.area+'）');
+}
+function renderAll(){renderAreaBar();renderToday();renderHourly();renderCatch();}
 
 function setStatus(){
   var o=S.ok,mark=function(v){return v===null?'…':(v?'○':'×');};
@@ -628,17 +689,61 @@ function setStatus(){
 }
 
 function load(){
-  S.ok={wx:null,wave:null,tide:null};S.tide={};seaP=null;
+  S.areaCache={};S.ok={wx:null,wave:null,tide:null};S.tide={};seaP=null;
   $('#status').textContent='取得中…';
-  var a=getWx().catch(function(){}),b=getWave().catch(function(){});
-  Promise.all([a,b]).then(function(){
-    renderAll();setStatus();
+  loadAreaData(UI.area).then(function(e){
+    applyArea(e);renderAll();setStatus();
     var n=nowJST();
     return Promise.all([0,1,2].map(function(i){return getTide(addDays(n.date,i)).catch(function(){});}));
   }).then(function(){
     S.ok.tide=Object.keys(S.tide).length>0;
     S.updated=Date.now();renderAll();setStatus();
   });
+}
+function setArea(name){
+  UI.area=name;store.set('ika.area',name);renderAreaBar();
+  $('#status').textContent='取得中…';
+  loadAreaData(name).then(function(e){if(UI.area!==name)return;applyArea(e);renderAll();setStatus();});
+}
+
+function renderSpotSheet(){
+  var h='';
+  S.spots.forEach(function(sp){
+    var p=S.pos[sp];
+    h+='<div class="card" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><b>'+esc(sp)+'</b><span class="mut" style="font-size:12px">'+(p?'位置 設定済み':'位置 未設定')+'</span></div>'+
+      '<div class="row" style="margin-top:8px;flex-wrap:wrap"><button type="button" class="ghost" data-gps="'+esc(sp)+'">今いる場所にする</button><button type="button" class="ghost" data-find="'+esc(sp)+'">地名で探す</button>'+(p?'<button type="button" class="ghost" data-clr="'+esc(sp)+'">位置を消す</button>':'')+'</div>';
+    if(UI.found&&UI.found.spot===sp&&UI.found.list.length){
+      h+='<div class="pick">';
+      UI.found.list.forEach(function(f,i){h+='<button type="button" data-pick="'+i+'">'+esc(f.label)+'</button>';});
+      h+='</div>';
+    }
+    h+='</div>';
+  });
+  $('#sp-list').innerHTML=h;
+}
+function openSpots(){UI.found=null;renderSpotSheet();$('#spsheet').classList.add('open');document.body.style.overflow='hidden';}
+function closeSpots(){$('#spsheet').classList.remove('open');document.body.style.overflow='';}
+function setPos(name,la,lo){
+  S.pos[name]={lat:+(+la).toFixed(3),lon:+(+lo).toFixed(3)};store.set('ika.pos',S.pos);
+  delete S.areaCache[name];UI.found=null;renderSpotSheet();renderAreaBar();toast(name+'の位置を設定しました');
+}
+function useHere(name){
+  if(!navigator.geolocation){toast('この端末では位置情報を使えません');return;}
+  toast('位置を取得しています…');
+  navigator.geolocation.getCurrentPosition(function(p){setPos(name,p.coords.latitude,p.coords.longitude);},function(){toast('位置を取得できませんでした。設定で位置情報を許可してください');},{enableHighAccuracy:false,timeout:15000,maximumAge:60000});
+}
+function findSpot(name){
+  var q=prompt('探したい地名を入力してください（例：田井）',name);
+  if(!q)return;
+  fetchJ('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(q)+'&count=20&language=ja&countryCode=JP').then(function(j){
+    var r=(j.results||[]).map(function(x){
+      return {label:x.name+'（'+[x.admin1,x.admin2||x.admin3].filter(Boolean).join(' ')+'）',lat:x.latitude,lon:x.longitude,o:(x.admin1==='京都府'||x.admin1==='福井県')?0:1};
+    });
+    r.sort(function(a,b){return a.o-b.o;});
+    UI.found={spot:name,list:r.slice(0,8)};
+    if(!r.length)toast('見つかりませんでした');
+    renderSpotSheet();
+  },function(){toast('検索できませんでした');});
 }
 
 var idbP=null;
@@ -712,7 +817,7 @@ function chip(container,arr,key,clearable,fmt){
   var el=$(container);el.innerHTML='';
   arr.forEach(function(x){
     var b=document.createElement('button');b.type='button';b.className='chip'+(F[key]===x?' on':'');b.textContent=fmt?fmt(x):x;
-    b.onclick=function(){F[key]=(clearable&&F[key]===x)?'':x;if(key==='spot')$('#f-err').textContent='';drawForm();};
+    b.onclick=function(){F[key]=(clearable&&F[key]===x)?'':x;if(key==='spot'){$('#f-err').textContent='';loadAreaData(S.pos[F.spot]?F.spot:'舞鶴').then(drawForm);}drawForm();};
     el.appendChild(b);
   });
 }
@@ -721,9 +826,11 @@ function drawForm(){
   chip('#f-times',SLOTS,'time',false);
   chip('#f-egi',EGI,'egi',true);
   $('#f-n').textContent=F.n+'杯';
-  var d=$('#f-date').value,h=slotHour(d,F.time),k=d+'T'+pad(h)+':00',w=S.wx[k],parts=[];
+  var nm=(F.spot&&S.pos[F.spot])?F.spot:'舞鶴';
+  var e=S.areaCache[nm]||(nm===UI.area?{wx:S.wx,wave:S.wave,sun:S.sun}:{wx:{},wave:{},sun:{}});
+  var d=$('#f-date').value,h=slotHour(d,F.time,e.sun[d]),k=d+'T'+pad(h)+':00',w=e.wx[k],parts=[];
   if(w&&w.ws!=null)parts.push('風 '+dir8(w.wd)+' '+Math.round(w.ws)+'m');
-  if(S.wave[k]!=null)parts.push('波 '+S.wave[k].toFixed(1)+'m');
+  if(e.wave[k]!=null)parts.push('波 '+e.wave[k].toFixed(1)+'m');
   parts.push(shio(d));
   $('#f-auto').textContent=parts.length?'保存時に自動で記録：'+parts.join('・'):'この日の風・波・潮の予報値が取得できないため、状況は記録されません。';
 }
@@ -740,7 +847,7 @@ function submit(){
   if(!d){$('#f-err').textContent='日付を入力してください';return;}
   var btn=$('#f-save');btn.disabled=true;btn.textContent='保存中…';
   var list=F.photos.slice();
-  getConds(d,F.time).then(function(c){
+  getConds(d,F.time,F.spot).then(function(c){
     return savePhotos(list).then(function(r){
       S.rec.push({id:newId(),ts:Date.now(),date:d,slot:F.time,spot:F.spot,n:F.n,
         smin:$('#f-smin').value,smax:$('#f-smax').value,egi:F.egi,memo:$('#f-memo').value.trim(),wind:c.wind||'',wave:c.wave||'',tide:c.tide||'',photos:r.ids});
@@ -754,7 +861,7 @@ function exportJ(){
   var ids=[];S.rec.forEach(function(r){(r.photos||[]).forEach(function(i){ids.push(i);});});
   Promise.all(ids.map(function(id){return phGet(id).then(function(u){return [id,u];},function(){return [id,''];});})).then(function(pairs){
     var photos={};pairs.forEach(function(p){if(p[1])photos[p[0]]=p[1];});
-    var blob=new Blob([JSON.stringify({v:2,rec:S.rec,spots:S.spots,photos:photos})],{type:'application/json'});
+    var blob=new Blob([JSON.stringify({v:3,rec:S.rec,spots:S.spots,pos:S.pos,photos:photos})],{type:'application/json'});
     var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='maizuru-ika-'+nowJST().date+'.json';
     document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
   });
@@ -770,6 +877,7 @@ function importJ(file){
       Promise.all(jobs).then(function(){
         S.rec=S.rec.concat(add);
         (j.spots||[]).forEach(function(sp){if(S.spots.indexOf(sp)<0)S.spots.push(sp);});
+        Object.keys(j.pos||{}).forEach(function(k){if(!S.pos[k]&&j.pos[k]&&isFinite(j.pos[k].lat))S.pos[k]=j.pos[k];});store.set('ika.pos',S.pos);
         sortRec();saveRec();store.set('ika.spots',S.spots);renderCatch();toast(add.length+'件を読み込みました');
       });
     }catch(e){toast('読み込めませんでした');}
@@ -779,17 +887,23 @@ function importJ(file){
 
 function setTab(t){
   UI.tab=t;
+  $('#areabar').hidden=(t==='catch');
   ['today','hourly','catch'].forEach(function(k){$('#v-'+k).hidden=k!==t;});
   document.querySelectorAll('.tabs button').forEach(function(b){b.classList.toggle('on',b.dataset.tab===t);});
   window.scrollTo(0,0);
 }
 
 document.addEventListener('click',function(e){
-  var t=e.target.closest('[data-tab],[data-hd],[data-spot],[data-del],[data-act],[data-pid]');
+  var t=e.target.closest('[data-tab],[data-hd],[data-spot],[data-del],[data-act],[data-pid],[data-area],[data-gps],[data-find],[data-pick],[data-clr]');
   if(!t)return;
   if(t.dataset.tab){setTab(t.dataset.tab);return;}
   if(t.dataset.hd!=null){UI.hd=+t.dataset.hd;renderHourly();return;}
-  if(t.dataset.spot){UI.spot=t.dataset.spot;renderCatch();return;}
+  if(t.dataset.spot){UI.spot=(t.dataset.spot!=='すべて'&&UI.spot===t.dataset.spot)?'すべて':t.dataset.spot;renderCatch();return;}
+  if(t.dataset.area){setArea(t.dataset.area);return;}
+  if(t.dataset.gps){useHere(t.dataset.gps);return;}
+  if(t.dataset.find){findSpot(t.dataset.find);return;}
+  if(t.dataset.pick!=null){var f=UI.found&&UI.found.list[+t.dataset.pick];if(f)setPos(UI.found.spot,f.lat,f.lon);return;}
+  if(t.dataset.clr){var cn=t.dataset.clr;delete S.pos[cn];store.set('ika.pos',S.pos);delete S.areaCache[cn];if(UI.area===cn)setArea('舞鶴');renderSpotSheet();renderAreaBar();return;}
   if(t.dataset.pid){if(t.src)openLb(t.src);return;}
   if(t.dataset.del){
     if(confirm('この記録を削除しますか？')){
@@ -802,6 +916,12 @@ document.addEventListener('click',function(e){
   var a=t.dataset.act;
   if(a==='open')openSheet();
   else if(a==='close')closeSheet();
+  else if(a==='spots')openSpots();
+  else if(a==='spclose')closeSpots();
+  else if(a==='spadd'){
+    var nv=$('#sp-new').value.trim();
+    if(nv){if(S.spots.indexOf(nv)<0){S.spots.push(nv);store.set('ika.spots',S.spots);}$('#sp-new').value='';renderSpotSheet();renderCatch();}
+  }
   else if(a==='minus'){if(F.n>0)F.n--;drawForm();}
   else if(a==='plus'){F.n++;drawForm();}
   else if(a==='addspot'){
@@ -840,7 +960,7 @@ $('#f-file').addEventListener('change',function(e){
   },Promise.resolve()).then(drawPhotos);
 });
 $('#importer').addEventListener('change',function(e){var f=e.target.files[0];if(f)importJ(f);e.target.value='';});
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeLb();closeSheet();}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeLb();closeSheet();closeSpots();}});
 document.addEventListener('visibilitychange',function(){
   if(!document.hidden&&S.updated&&Date.now()-S.updated>20*60*1000)load();
 });
@@ -848,6 +968,7 @@ document.addEventListener('visibilitychange',function(){
 S.rec=store.get('ika.rec.v1',[]);sortRec();
 S.spots=store.get('ika.spots',SPOTS0.slice());
 S.rec.forEach(function(r){if(S.spots.indexOf(r.spot)<0)S.spots.push(r.spot);});
+S.pos=store.get('ika.pos',{});UI.area=store.get('ika.area','舞鶴');if(UI.area!=='舞鶴'&&!S.pos[UI.area])UI.area='舞鶴';
 pruneCache();
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
 renderAll();
