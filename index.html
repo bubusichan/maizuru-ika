@@ -167,6 +167,7 @@ input[type=text],input[type=date],input[type=number],textarea{width:100%;font:in
 .pick{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .pick button{text-align:left;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);font-size:14px}
 .foot{margin:24px 0 0;font-size:11px;color:var(--sub);line-height:1.7}
+.foot a{color:var(--sea-ink);text-decoration:underline}
 .foot input{width:90px;display:inline-block;padding:4px 8px;font-size:14px}
 @media (prefers-reduced-motion:reduce){#toast{transition:none}}
 button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--sea);outline-offset:2px}
@@ -330,11 +331,11 @@ function shio(ds){return (S.tide[ds]&&S.tide[ds].moon)||moonName(ds);}
 var DIR8=['北','北東','東','南東','南','南西','西','北西'];
 function dir8(d){return d==null?'—':DIR8[Math.round(d/45)%8];}
 
-function fetchJ(u,ms){
-  var c=new AbortController(),t=setTimeout(function(){c.abort();},ms||12000);
-  return fetch(u,{signal:c.signal}).then(function(r){clearTimeout(t);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).catch(function(e){clearTimeout(t);throw e;});
+function fetchJ(u,ms,opt){
+  var c=new AbortController(),t=setTimeout(function(){c.abort();},ms||12000),o=opt||{};
+  o.signal=c.signal;
+  return fetch(u,o).then(function(r){clearTimeout(t);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).catch(function(e){clearTimeout(t);throw e;});
 }
-
 function areaPos(name){return (name!=='舞鶴'&&S.pos[name])?S.pos[name]:{lat:LAT,lon:LON};}
 function fetchWx(pos){
   var u='https://api.open-meteo.com/v1/forecast?latitude='+pos.lat+'&longitude='+pos.lon+
@@ -373,24 +374,47 @@ function applyArea(e){S.wx=e.wx;S.sun=e.sun;S.wave=e.wave;S.ok.wx=e.okWx;S.ok.wa
 
 var hcP=null;
 function tideUrl(hc,ds){var p=ds.split('-');return 'https://api.tide736.net/get_tide.php?pc=26&hc='+hc+'&yr='+p[0]+'&mn='+(+p[1])+'&dy='+(+p[2])+'&rg=day';}
+var EP=[
+  function(hc,ds){return fetchJ(tideUrl(hc,ds),10000);},
+  function(hc,ds){
+    var p=ds.split('-');
+    return fetchJ('https://tide736.net/api/get_tide.php',10000,{method:'POST',headers:{'content-type':'application/x-www-form-urlencoded; charset=UTF-8'},body:'pc=26&hc='+hc+'&yr='+p[0]+'&mn='+(+p[1])+'&dy='+(+p[2])+'&rg=day'});
+  }
+];
+function epTry(hc,ds){
+  var pref=store.get('ika.ep',0);
+  return EP[pref](hc,ds).catch(function(){return EP[1-pref](hc,ds).then(function(j){store.set('ika.ep',1-pref);return j;});});
+}
+function probe(ds){
+  return EP[0](1,ds).then(function(){return 0;},function(){
+    return EP[1](1,ds).then(function(){return 1;},function(){
+      store.set('ika.hcfail',Date.now());
+      store.set('ika.hcdiag','取得先に接続できませんでした（通信の問題、またはブラウザに拒否されました）。2つの接続先を試しました');
+      hcP=null;throw new Error('noconn');
+    });
+  });
+}
 function findHc(force){
   var saved=store.get('ika.hc',null);
   if(saved&&!force)return Promise.resolve(saved);
   if(!force&&Date.now()-store.get('ika.hcfail',0)<24*3600e3)return Promise.reject(new Error('cooldown'));
   if(hcP&&!force)return hcP;
-  var ds=nowJST().date,reqs=[];
-  for(var i=1;i<=20;i++){(function(hc){
-    reqs.push(fetchJ(tideUrl(hc,ds),10000).then(function(j){
-      return {hc:hc,ok:true,name:(j&&j.status==1&&j.tide&&j.tide.port)?String(j.tide.port.harbor_namej||''):''};
-    }).catch(function(){return {hc:hc,ok:false,name:''};}));
-  })(i);}
-  hcP=Promise.all(reqs).then(function(r){
-    var okc=r.filter(function(x){return x.ok;}).length;
+  var ds=nowJST().date;
+  hcP=probe(ds).then(function(ep){
+    store.set('ika.ep',ep);
+    var reqs=[];
+    for(var i=1;i<=20;i++){(function(hc){
+      reqs.push(EP[ep](hc,ds).then(function(j){
+        return {hc:hc,name:(j&&j.status==1&&j.tide&&j.tide.port)?String(j.tide.port.harbor_namej||''):''};
+      }).catch(function(){return {hc:hc,name:''};}));
+    })(i);}
+    return Promise.all(reqs);
+  }).then(function(r){
     var ex=r.filter(function(x){return x.name==='舞鶴';})[0]||r.filter(function(x){return x.name.indexOf('舞鶴')>=0;})[0];
     if(!ex){
       var names=r.filter(function(x){return x.name;}).map(function(x){return x.name+'='+x.hc;}).join('、');
       store.set('ika.hcfail',Date.now());
-      store.set('ika.hcdiag',okc===0?'取得先に接続できませんでした（通信の問題、またはブラウザに拒否されました）':'舞鶴の港が見つかりませんでした。見つかった港：'+(names||'なし'));
+      store.set('ika.hcdiag','舞鶴の港が見つかりませんでした。見つかった港：'+(names||'なし'));
       hcP=null;throw new Error('nohc');
     }
     store.set('ika.hc',ex.hc);store.del('ika.hcfail');store.set('ika.hcdiag','港コード '+ex.hc+'（'+ex.name+'）で取得できています');
@@ -421,7 +445,7 @@ function synth(ext){
   return out;
 }
 function tide736(ds){
-  return findHc().then(function(hc){return fetchJ(tideUrl(hc,ds));}).then(function(j){
+  return findHc().then(function(hc){return epTry(hc,ds);}).then(function(j){
     var c=j&&j.tide&&j.tide.chart&&j.tide.chart[ds];
     if(!c)throw new Error('nochart');
     var ext=[];
@@ -615,6 +639,7 @@ function renderToday(){
   h+='<h2>今日の潮位</h2><div class="card">'+chartSvg(ds,n)+'<p class="mut" style="margin:4px 0 0">黄色の帯は朝夕マズメ（日の出・日の入りの前後1時間）</p></div>';
   h+='<div class="foot">'+
     '<p style="margin:0">天気・風：Open-Meteo（選んだ場所の予報値。位置の精度は数km単位です）。波高：Open-Meteo Marine（海の予報モデルの値。湾内は反映されにくく、沖合の値になることがあります）。潮位・潮回り：'+(S.tideSrc==='model'?'Open-Meteo Marine の海面高度モデル（潮汐表の値ではありません）':'tide736.net（海上保安庁 書誌742号の調和定数から計算した推算値）')+'。予報値は目安です。潮位・潮回りは、どの釣り場でも舞鶴の値です。潮位は航海用ではありません。潮回りは、潮汐表にない日や取得できない場合は、0時の月と太陽の位置（気象庁の区分）から計算します。釣具店の潮見表と1日ずれることがあります。</p>'+
+    '<p style="margin:8px 0 0">正確な潮位は、次の潮汐表で確認できます：<a href="https://www.data.jma.go.jp/kaiyou/db/tide/suisan/suisan.php?stn=MZ" target="_blank" rel="noopener">気象庁の潮位表（舞鶴）</a>　<a href="https://tenki.jp/wave/6/29/43/" target="_blank" rel="noopener">tenki.jp（舞鶴港）</a></p>'+
     '<p style="margin:8px 0 0">潮汐表の取得状況：'+esc(store.get('ika.hcdiag','まだ確認していません'))+'</p>'+
     '<p style="margin:8px 0 0">潮汐の港コード：<input type="text" id="hc" inputmode="numeric" value="'+esc(store.get('ika.hc',''))+'" aria-label="港コード"> <button class="ghost" type="button" data-act="sethc">設定</button></p>'+
   '</div>';
