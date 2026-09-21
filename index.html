@@ -385,43 +385,8 @@ function epTry(hc,ds){
   var pref=store.get('ika.ep',0);
   return EP[pref](hc,ds).catch(function(){return EP[1-pref](hc,ds).then(function(j){store.set('ika.ep',1-pref);return j;});});
 }
-function probe(ds){
-  return EP[0](1,ds).then(function(){return 0;},function(){
-    return EP[1](1,ds).then(function(){return 1;},function(){
-      store.set('ika.hcfail',Date.now());
-      store.set('ika.hcdiag','取得先に接続できませんでした（通信の問題、またはブラウザに拒否されました）。2つの接続先を試しました');
-      hcP=null;throw new Error('noconn');
-    });
-  });
-}
-function findHc(force){
-  var saved=store.get('ika.hc',null);
-  if(saved&&!force)return Promise.resolve(saved);
-  if(!force&&Date.now()-store.get('ika.hcfail',0)<24*3600e3)return Promise.reject(new Error('cooldown'));
-  if(hcP&&!force)return hcP;
-  var ds=nowJST().date;
-  hcP=probe(ds).then(function(ep){
-    store.set('ika.ep',ep);
-    var reqs=[];
-    for(var i=1;i<=20;i++){(function(hc){
-      reqs.push(EP[ep](hc,ds).then(function(j){
-        return {hc:hc,name:(j&&j.status==1&&j.tide&&j.tide.port)?String(j.tide.port.harbor_namej||''):''};
-      }).catch(function(){return {hc:hc,name:''};}));
-    })(i);}
-    return Promise.all(reqs);
-  }).then(function(r){
-    var ex=r.filter(function(x){return x.name==='舞鶴';})[0]||r.filter(function(x){return x.name.indexOf('舞鶴')>=0;})[0];
-    if(!ex){
-      var names=r.filter(function(x){return x.name;}).map(function(x){return x.name+'='+x.hc;}).join('、');
-      store.set('ika.hcfail',Date.now());
-      store.set('ika.hcdiag','舞鶴の港が見つかりませんでした。見つかった港：'+(names||'なし'));
-      hcP=null;throw new Error('nohc');
-    }
-    store.set('ika.hc',ex.hc);store.del('ika.hcfail');store.set('ika.hcdiag','港コード '+ex.hc+'（'+ex.name+'）で取得できています');
-    return ex.hc;
-  });
-  return hcP;
-}
+var DEFAULT_HC=5;
+function findHc(){return Promise.resolve(store.get('ika.hc',null)||DEFAULT_HC);}
 
 function lvl(ser,h){
   if(!ser.length)return null;
@@ -483,7 +448,16 @@ function getTide(ds){
   if(S.tide[ds])return Promise.resolve(S.tide[ds]);
   var c=store.get('ika.tide.'+ds,null);
   if(c){S.tide[ds]=c;return Promise.resolve(c);}
-  return tide736(ds).catch(function(){return seaTide(ds);}).then(function(d){
+  var recent=Date.now()-store.get('ika.tidefail',0)<3600e3;
+  var first=recent?Promise.reject(new Error('skip')):tide736(ds);
+  return first.then(function(d){
+    store.set('ika.hcdiag','潮汐表（tide736.net）から取得できています');
+    return d;
+  },function(e){
+    if(!recent)store.set('ika.tidefail',Date.now());
+    store.set('ika.hcdiag','潮汐表を取得できませんでした。目安のモデル値を使っています');
+    return seaTide(ds);
+  }).then(function(d){
     S.tide[ds]=d;S.tideSrc=d.src;
     if(d.src==='tide736')store.set('ika.tide.'+ds,d);
     return d;
@@ -641,7 +615,7 @@ function renderToday(){
     '<p style="margin:0">天気・風：Open-Meteo（選んだ場所の予報値。位置の精度は数km単位です）。波高：Open-Meteo Marine（海の予報モデルの値。湾内は反映されにくく、沖合の値になることがあります）。潮位・潮回り：'+(S.tideSrc==='model'?'Open-Meteo Marine の海面高度モデル（潮汐表の値ではありません）':'tide736.net（海上保安庁 書誌742号の調和定数から計算した推算値）')+'。予報値は目安です。潮位・潮回りは、どの釣り場でも舞鶴の値です。潮位は航海用ではありません。潮回りは、潮汐表にない日や取得できない場合は、0時の月と太陽の位置（気象庁の区分）から計算します。釣具店の潮見表と1日ずれることがあります。</p>'+
     '<p style="margin:8px 0 0">正確な潮位は、次の潮汐表で確認できます：<a href="https://www.data.jma.go.jp/kaiyou/db/tide/suisan/suisan.php?stn=MZ" target="_blank" rel="noopener">気象庁の潮位表（舞鶴）</a>　<a href="https://tenki.jp/wave/6/29/43/" target="_blank" rel="noopener">tenki.jp（舞鶴港）</a></p>'+
     '<p style="margin:8px 0 0">潮汐表の取得状況：'+esc(store.get('ika.hcdiag','まだ確認していません'))+'</p>'+
-    '<p style="margin:8px 0 0">潮汐の港コード：<input type="text" id="hc" inputmode="numeric" value="'+esc(store.get('ika.hc',''))+'" aria-label="港コード"> <button class="ghost" type="button" data-act="sethc">設定</button></p>'+
+    '<p style="margin:8px 0 0">潮汐の港コード：<input type="text" id="hc" inputmode="numeric" value="'+esc(store.get('ika.hc',''))+'" aria-label="港コード" placeholder="5"> <button class="ghost" type="button" data-act="sethc">設定</button></p>'+
   '</div>';
   $('#v-today').innerHTML=h;
 }
@@ -1043,11 +1017,11 @@ document.addEventListener('click',function(e){
     }else{
       store.del('ika.hc');store.del('ika.hcfail');hcP=null;
       Object.keys(S.tide).forEach(function(k){store.del('ika.tide.'+k);});
-      load();toast('港コードを自動検出します');
+      load();toast('標準の港コード（5）に戻しました');
     }
   }
 });
-$('#refresh').addEventListener('click',function(){load();});
+$('#refresh').addEventListener('click',function(){store.del('ika.tidefail');load();});
 $('#f-date').addEventListener('change',drawForm);
 $('#f-file').addEventListener('change',function(e){
   var fs=Array.prototype.slice.call(e.target.files||[]).slice(0,MAXPH-F.photos.length);
