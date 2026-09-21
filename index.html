@@ -89,8 +89,19 @@ svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;str
 .hrow.mz small{color:var(--mz-ink);opacity:.8}
 .hrow .w.strong{background:var(--wd);color:var(--wd-ink);border-radius:6px;padding:1px 6px;width:fit-content}
 .wc{display:flex;align-items:center;gap:3px;font-size:13px}
-.wc svg{width:18px;height:18px;flex:none}
+.wc .em{font-size:17px;line-height:1;flex:none}
+.em{font-family:system-ui,'Apple Color Emoji','Segoe UI Emoji',sans-serif;font-style:normal}
+.m .v .em{font-size:20px;margin-right:6px}
+.wkr .em{font-size:17px;line-height:1}
 .hrow .rn{background:var(--sea-tint);color:var(--sea-ink);border-radius:6px;text-align:center}
+.wkr{display:grid;grid-template-columns:58px 24px minmax(0,1fr) 34px 40px 34px;gap:4px;align-items:center;width:100%;padding:7px 6px;font-size:13px;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);color:var(--ink);border-radius:0}
+.wkr:last-child{border-bottom:0}
+.wkr.hd{font-size:11px;color:var(--sub);padding-bottom:4px}
+.wkr.on{background:var(--sea-tint);border-radius:8px}
+.wkr svg{width:18px;height:18px}
+.wkr b{font-size:14px}
+.wkr small{font-size:11px;color:var(--sub);margin-left:3px}
+.wkr .ws{background:var(--wd);color:var(--wd-ink);border-radius:6px;text-align:center}
 .rows{display:flex;flex-direction:column;gap:2px}
 .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--sub);margin:10px 4px 0}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
@@ -326,7 +337,7 @@ function areaPos(name){return (name!=='舞鶴'&&S.pos[name])?S.pos[name]:{lat:LA
 function fetchWx(pos){
   var u='https://api.open-meteo.com/v1/forecast?latitude='+pos.lat+'&longitude='+pos.lon+
     '&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m'+
-    '&daily=sunrise,sunset&wind_speed_unit=ms&timezone=Asia%2FTokyo&past_days=2&forecast_days=4';
+    '&daily=sunrise,sunset&wind_speed_unit=ms&timezone=Asia%2FTokyo&past_days=2&forecast_days=7';
   return fetchJ(u).then(function(j){
     var h=j.hourly,wx={},sun={};
     h.time.forEach(function(t,i){wx[t]={temp:h.temperature_2m[i],pop:h.precipitation_probability[i],rain:h.precipitation?h.precipitation[i]:null,code:h.weather_code[i],ws:h.wind_speed_10m[i],wd:h.wind_direction_10m[i],wg:h.wind_gusts_10m[i]};});
@@ -335,7 +346,7 @@ function fetchWx(pos){
   });
 }
 function marineQ(la,lo){
-  return fetchJ('https://marine-api.open-meteo.com/v1/marine?latitude='+la+'&longitude='+lo+'&hourly=wave_height&timezone=Asia%2FTokyo&past_days=2&forecast_days=4').then(function(j){
+  return fetchJ('https://marine-api.open-meteo.com/v1/marine?latitude='+la+'&longitude='+lo+'&hourly=wave_height&timezone=Asia%2FTokyo&past_days=2&forecast_days=7').then(function(j){
     var w={},n=0;
     j.hourly.time.forEach(function(t,i){var v=j.hourly.wave_height[i];if(v!=null){w[t]=v;n++;}});
     return {w:w,n:n};
@@ -417,7 +428,7 @@ function tide736(ds){
 }
 var seaP=null;
 function getSea(){
-  if(!seaP)seaP=fetchJ('https://marine-api.open-meteo.com/v1/marine?latitude='+MLAT+'&longitude='+MLON+'&hourly=sea_level_height_msl&timezone=Asia%2FTokyo&past_days=2&forecast_days=4').then(function(j){
+  if(!seaP)seaP=fetchJ('https://marine-api.open-meteo.com/v1/marine?latitude='+MLAT+'&longitude='+MLON+'&hourly=sea_level_height_msl&timezone=Asia%2FTokyo&past_days=2&forecast_days=7').then(function(j){
     var o={};j.hourly.time.forEach(function(t,i){var v=j.hourly.sea_level_height_msl[i];if(v!=null)o[t]=Math.round(v*100);});return o;
   });
   return seaP;
@@ -474,22 +485,21 @@ function getConds(d,slot,spot){
   }).then(function(){return getTide(d);}).then(function(){c.tide=shio(d);return c;},function(){c.tide=shio(d);return c;});
 }
 
-function ico(code){
-  var P={
-    sun:'<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
-    cloud:'<path d="M7 18h10a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 7 9.5 4.3 4.3 0 0 0 7 18z"/>',
-    rain:'<path d="M7 15h10a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 7.5 7.6 3.7 3.7 0 0 0 7 15z"/><path d="M9 18l-.8 2.5M13 18l-.8 2.5M17 18l-.8 2.5"/>',
-    fog:'<path d="M4 9h16M6 13h13M4 17h16"/>',
-    snow:'<path d="M7 14h10a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 7.5 6.6 3.7 3.7 0 0 0 7 14z"/><path d="M9 18h.01M13 19h.01M17 18h.01"/>',
-    storm:'<path d="M7 14h10a3.5 3.5 0 0 0 .5-6.96A5 5 0 0 0 7.5 6.6 3.7 3.7 0 0 0 7 14z"/><path d="M12 15l-2 3h3l-2 3"/>'
-  };
-  var k='cloud';
-  if(code===0||code===1)k='sun';
-  else if(code===45||code===48)k='fog';
-  else if((code>=51&&code<=67)||(code>=80&&code<=82))k='rain';
-  else if((code>=71&&code<=77)||code===85||code===86)k='snow';
-  else if(code>=95)k='storm';
-  return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">'+P[k]+'</svg>';
+function ico(code,night){
+  var e='☁️',t='曇り';
+  if(code===0||code===1){e=night?'🌙':'☀️';t=night?'晴れ（夜）':'晴れ';}
+  else if(code===2){e=night?'☁️':'⛅';t='薄曇り';}
+  else if(code===45||code===48){e='🌫️';t='霧';}
+  else if((code>=51&&code<=67)||(code>=80&&code<=82)){e='☂️';t='雨';}
+  else if((code>=71&&code<=77)||code===85||code===86){e='❄️';t='雪';}
+  else if(code>=95){e='⛈️';t='雷雨';}
+  return '<span class="em" role="img" aria-label="'+t+'">'+e+'</span>';
+}
+function isNight(ds,h){
+  var s=S.sun[ds];
+  if(!s)return h<5||h>=18;
+  var m=h*60+30;
+  return m<mins(s.rise)||m>=mins(s.set);
 }
 function wxText(code){
   if(code===0)return '快晴';if(code===1)return '晴れ';if(code===2)return '薄曇り';if(code===3)return '曇り';
@@ -581,7 +591,7 @@ function renderToday(){
   var n=nowJST(),ds=n.date,w=S.wx[ds+'T'+pad(n.h)+':00'],t=S.tide[ds];
   var h=renderHero(n);
   h+='<div class="grid2" style="margin-top:10px">';
-  h+='<div class="m"><p class="l">天気</p><p class="v">'+(w?ico(w.code)+wxText(w.code):'—')+'</p><p class="s">'+(w?Math.round(w.temp)+'℃　降水 '+(w.pop==null?'—':w.pop+'%'):'')+'</p></div>';
+  h+='<div class="m"><p class="l">天気</p><p class="v">'+(w?ico(w.code,isNight(ds,n.h))+wxText(w.code):'—')+'</p><p class="s">'+(w?Math.round(w.temp)+'℃　降水 '+(w.pop==null?'—':w.pop+'%'):'')+'</p></div>';
   h+='<div class="m"><p class="l">風</p><p class="v">'+(w?arrow(w.wd)+dir8(w.wd)+' '+Math.round(w.ws)+'m':'—')+'</p><p class="s">'+(w&&w.wg!=null?'最大瞬間 '+Math.round(w.wg)+'m':'')+'</p></div>';
   var wv=S.wave[ds+'T'+pad(n.h)+':00'];
   h+='<div class="m"><p class="l">波</p><p class="v">'+(wv!=null?wv.toFixed(1)+'m':'—')+'</p><p class="s">'+(S.waveOff?'沖合の値（湾内は小さめ）':'この場所の予報値')+'</p></div>';
@@ -601,11 +611,38 @@ function renderToday(){
   $('#v-today').innerHTML=h;
 }
 
+function dayStats(ds){
+  var t=[],r=0,wmax=null,code=null;
+  for(var h=0;h<24;h++){
+    var w=S.wx[ds+'T'+pad(h)+':00'];if(!w)continue;
+    if(w.temp!=null)t.push(w.temp);
+    if(w.rain!=null)r+=w.rain;
+    if(h>=4&&h<=20&&w.ws!=null&&(wmax===null||w.ws>wmax))wmax=w.ws;
+    if(h===12)code=w.code;
+  }
+  if(!t.length)return null;
+  return {hi:Math.round(Math.max.apply(null,t)),lo:Math.round(Math.min.apply(null,t)),rain:r,wmax:wmax,code:code};
+}
+function weekCard(n){
+  var h='<div class="card" style="padding:6px 8px"><div class="wkr hd"><span>日付</span><span></span><span>気温 高/低</span><span>風</span><span>雨</span><span>潮</span></div>';
+  for(var i=0;i<7;i++){
+    var d=addDays(n.date,i),st=dayStats(d),pp=d.split('-');
+    var rain=st?(st.rain<0.05?'0':(st.rain<10?st.rain.toFixed(1):String(Math.round(st.rain)))):'—';
+    h+='<button type="button" class="wkr'+(UI.hd===i?' on':'')+'" data-hd="'+i+'" aria-label="'+labelDate(d)+'を表示">'+
+      '<span><b>'+(i===0?'今日':(+pp[1])+'/'+(+pp[2]))+'</b><small>'+dowJ(d)+'</small></span>'+
+      '<span>'+(st&&st.code!=null?ico(st.code):'')+'</span>'+
+      '<span>'+(st?st.hi+'/'+st.lo+'°':'—')+'</span>'+
+      '<span class="'+(st&&st.wmax!=null&&st.wmax>=STRONG?'ws':'')+'">'+(st&&st.wmax!=null?Math.round(st.wmax):'—')+'</span>'+
+      '<span>'+rain+'</span>'+
+      '<span>'+shio(d)+'</span></button>';
+  }
+  h+='</div><p class="mut" style="margin:6px 4px 0;font-size:11px">風は4〜20時の最大（m/s）、雨は1日の合計（mm）です。日をタップすると、下に1時間ごとの表が出ます。4日目以降は予報の精度が下がります。</p>';
+  return h;
+}
 function renderHourly(){
-  var n=nowJST(),ds=addDays(n.date,UI.hd),labels=['今日','明日','明後日'];
-  var h='<div class="seg" role="tablist">';
-  labels.forEach(function(l,i){h+='<button type="button" class="chip'+(UI.hd===i?' on':'')+'" data-hd="'+i+'">'+l+'</button>';});
-  h+='</div><p style="margin:0 0 6px;font-size:16px;font-weight:700">'+labelDate(ds)+'<span class="mut" style="font-weight:400;margin-left:8px">'+shio(ds)+'</span></p>';
+  var n=nowJST(),ds=addDays(n.date,UI.hd);
+  var h=weekCard(n);
+  h+='<p style="margin:16px 0 6px;font-size:16px;font-weight:700">'+labelDate(ds)+'<span class="mut" style="font-weight:400;margin-left:8px">'+shio(ds)+'</span></p>';
   h+='<div class="hgrid hhead"><span>時刻</span><span>天気</span><span>風</span><span>雨</span><span>波</span><span>潮位</span></div><div class="rows">';
   var from=UI.all?0:4,to=UI.all?23:20,wins=windows(ds);
   for(var hr=from;hr<=to;hr++){
@@ -616,7 +653,7 @@ function renderHourly(){
     var rainy=w&&w.rain!=null&&w.rain>=1;
     h+='<div class="hgrid hrow'+(mz?' mz':'')+(isNow?' nowr':'')+'">'+
       '<b>'+hr+'時</b>'+
-      '<span class="wc">'+(w?ico(w.code)+'<span>'+Math.round(w.temp)+'°</span>':'—')+'</span>'+
+      '<span class="wc">'+(w?ico(w.code,isNight(ds,hr))+'<span>'+Math.round(w.temp)+'°</span>':'—')+'</span>'+
       '<span><span class="w'+(strong?' strong':'')+'">'+(w?arrow(w.wd)+dir8(w.wd)+' '+Math.round(w.ws):'—')+'</span>'+(w&&w.wg!=null?'<small>瞬間 '+Math.round(w.wg)+'</small>':'')+'</span>'+
       '<span'+(rainy?' class="rn"':'')+'>'+(w&&w.rain!=null?(w.rain>0?w.rain.toFixed(1):'0'):'—')+(w&&w.pop!=null?'<small>'+w.pop+'%</small>':'')+'</span>'+
       '<span>'+(wv!=null?wv.toFixed(1):'—')+'</span>'+
@@ -695,7 +732,7 @@ function load(){
   loadAreaData(UI.area).then(function(e){
     applyArea(e);renderAll();setStatus();
     var n=nowJST();
-    return Promise.all([0,1,2].map(function(i){return getTide(addDays(n.date,i)).catch(function(){});}));
+    return Promise.all([0,1,2,3,4,5,6].map(function(i){return getTide(addDays(n.date,i)).catch(function(){});}));
   }).then(function(){
     S.ok.tide=Object.keys(S.tide).length>0;
     S.updated=Date.now();renderAll();setStatus();
