@@ -634,6 +634,7 @@ function saveRec(){store.set('ika.rec.v1',S.rec);}
 function sortRec(){S.rec.sort(function(a,b){return a.date<b.date?1:(a.date>b.date?-1:(b.ts||0)-(a.ts||0));});}
 function renderCatch(){
   var spots=['すべて'].concat(S.spots);
+  S.rec.forEach(function(r){if(spots.indexOf(r.spot)<0)spots.push(r.spot);});
   var rows=S.rec.filter(function(r){return UI.spot==='すべて'||r.spot===UI.spot;});
   var sum=rows.reduce(function(a,r){return a+r.n;},0);
   var h='<div class="sum"><div class="m"><p class="l">合計</p><p class="v">'+sum+'杯</p></div><div class="m"><p class="l">記録数</p><p class="v">'+rows.length+'件</p></div></div>';
@@ -711,7 +712,7 @@ function renderSpotSheet(){
   S.spots.forEach(function(sp){
     var p=S.pos[sp];
     h+='<div class="card" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><b>'+esc(sp)+'</b><span class="mut" style="font-size:12px">'+(p?'位置 設定済み':'位置 未設定')+'</span></div>'+
-      '<div class="row" style="margin-top:8px;flex-wrap:wrap"><button type="button" class="ghost" data-gps="'+esc(sp)+'">今いる場所にする</button><button type="button" class="ghost" data-find="'+esc(sp)+'">地名で探す</button>'+(p?'<button type="button" class="ghost" data-clr="'+esc(sp)+'">位置を消す</button>':'')+'</div>';
+      '<div class="row" style="margin-top:8px;flex-wrap:wrap"><button type="button" class="ghost" data-gps="'+esc(sp)+'">今いる場所にする</button><button type="button" class="ghost" data-find="'+esc(sp)+'">地名で探す</button>'+(p?'<button type="button" class="ghost" data-clr="'+esc(sp)+'">位置を消す</button>':'')+'<button type="button" class="ghost" data-rm="'+esc(sp)+'" style="color:var(--danger)">削除</button></div>';
     if(UI.found&&UI.found.spot===sp&&UI.found.list.length){
       h+='<div class="pick">';
       UI.found.list.forEach(function(f,i){h+='<button type="button" data-pick="'+i+'">'+esc(f.label)+'</button>';});
@@ -894,7 +895,7 @@ function setTab(t){
 }
 
 document.addEventListener('click',function(e){
-  var t=e.target.closest('[data-tab],[data-hd],[data-spot],[data-del],[data-act],[data-pid],[data-area],[data-gps],[data-find],[data-pick],[data-clr]');
+  var t=e.target.closest('[data-tab],[data-hd],[data-spot],[data-del],[data-act],[data-pid],[data-area],[data-gps],[data-find],[data-pick],[data-clr],[data-rm]');
   if(!t)return;
   if(t.dataset.tab){setTab(t.dataset.tab);return;}
   if(t.dataset.hd!=null){UI.hd=+t.dataset.hd;renderHourly();return;}
@@ -903,6 +904,17 @@ document.addEventListener('click',function(e){
   if(t.dataset.gps){useHere(t.dataset.gps);return;}
   if(t.dataset.find){findSpot(t.dataset.find);return;}
   if(t.dataset.pick!=null){var f=UI.found&&UI.found.list[+t.dataset.pick];if(f)setPos(UI.found.spot,f.lat,f.lon);return;}
+  if(t.dataset.rm){
+    var rn=t.dataset.rm,cnt=S.rec.filter(function(r){return r.spot===rn;}).length;
+    if(confirm('「'+rn+'」を釣り場の一覧から削除しますか？'+(cnt?'\n記録済みの釣果（'+cnt+'件）は残ります。':''))){
+      S.spots=S.spots.filter(function(x){return x!==rn;});store.set('ika.spots',S.spots);
+      delete S.pos[rn];store.set('ika.pos',S.pos);delete S.areaCache[rn];
+      if(UI.area===rn)setArea('舞鶴');
+      if(F.spot===rn)F.spot='';
+      renderSpotSheet();renderAreaBar();renderCatch();toast('削除しました');
+    }
+    return;
+  }
   if(t.dataset.clr){var cn=t.dataset.clr;delete S.pos[cn];store.set('ika.pos',S.pos);delete S.areaCache[cn];if(UI.area===cn)setArea('舞鶴');renderSpotSheet();renderAreaBar();return;}
   if(t.dataset.pid){if(t.src)openLb(t.src);return;}
   if(t.dataset.del){
@@ -967,7 +979,6 @@ document.addEventListener('visibilitychange',function(){
 
 S.rec=store.get('ika.rec.v1',[]);sortRec();
 S.spots=store.get('ika.spots',SPOTS0.slice());
-S.rec.forEach(function(r){if(S.spots.indexOf(r.spot)<0)S.spots.push(r.spot);});
 S.pos=store.get('ika.pos',{});UI.area=store.get('ika.area','舞鶴');if(UI.area!=='舞鶴'&&!S.pos[UI.area])UI.area='舞鶴';
 pruneCache();
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
