@@ -121,7 +121,7 @@ svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;str
 .del{background:none;border:0;color:var(--sub);font-size:12px;padding:6px 0 0;text-decoration:underline}
 .sum{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0 12px}
 
-.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom);z-index:5}
 .tabs button{background:none;border:0;padding:14px 0 12px;font-size:14px;color:var(--sub);border-top:3px solid transparent;margin-top:-1px}
 .tabs button.on{color:var(--ink);font-weight:700;border-top-color:var(--ink)}
 
@@ -166,6 +166,16 @@ input[type=text],input[type=date],input[type=number],textarea{width:100%;font:in
 .agg.on{background:var(--sea-tint);border-radius:8px}
 .pick{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .pick button{text-align:left;padding:9px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);font-size:14px}
+.tg{display:grid;grid-template-columns:34px repeat(8,minmax(0,1fr));align-items:center}
+.tg .lb{font-size:11px;color:var(--sub);padding:7px 0}
+.tg .h{font-size:11px;color:var(--sub);padding:2px 0 4px}
+.tg .c{text-align:center;font-size:13px;padding:5px 0;min-height:32px;display:flex;align-items:center;justify-content:center}
+.tg .ws{background:var(--wd);color:var(--wd-ink);border-radius:6px;padding:1px 4px}
+.tg .rn{background:var(--sea-tint);color:var(--sea-ink);border-radius:6px;padding:1px 5px}
+.tg .bars{display:inline-flex;align-items:flex-end;height:16px}
+.tg .bars i{display:inline-block;width:5px;border-radius:1px;margin:0 1px;background:var(--line)}
+.tg .bars i.on{background:var(--sea)}
+.chart .night{fill:var(--bg)}
 .foot{margin:24px 0 0;font-size:11px;color:var(--sub);line-height:1.7}
 .foot a{color:var(--sea-ink);text-decoration:underline}
 .foot input{width:90px;display:inline-block;padding:4px 8px;font-size:14px}
@@ -188,12 +198,14 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 
 <main class="wrap">
   <section id="v-today" class="view"></section>
+  <section id="v-tide" class="view" hidden></section>
   <section id="v-hourly" class="view" hidden></section>
   <section id="v-catch" class="view" hidden></section>
 </main>
 
 <nav class="tabs" aria-label="画面の切り替え">
   <button type="button" data-tab="today" class="on">今日</button>
+  <button type="button" data-tab="tide">潮見表</button>
   <button type="button" data-tab="hourly">時間別</button>
   <button type="button" data-tab="catch">釣果</button>
 </nav>
@@ -293,7 +305,7 @@ var store={
 };
 
 var S={wx:{},sun:{},wave:{},tide:{},rec:[],spots:[],ok:{wx:null,wave:null,tide:null},tideSrc:'',updated:null,pos:{},areaCache:{},waveOff:false};
-var UI={tab:'today',hd:0,all:false,spot:'すべて',area:'舞鶴',found:null};
+var UI={tab:'today',td:0,hd:0,all:false,spot:'すべて',area:'舞鶴',found:null};
 var F={spot:'',time:'朝マズメ',egi:'',n:0,photos:[]};
 var MAXPH=3;
 
@@ -648,6 +660,84 @@ function weekCard(n){
   h+='</div><p class="mut" style="margin:6px 4px 0;font-size:11px">風は4〜20時の最大（m/s）、雨は1日の合計（mm）です。日をタップすると、下に1時間ごとの表が出ます。4日目以降は予報の精度が下がります。</p>';
   return h;
 }
+function tideSvg(ds,t,n){
+  var W=300,H=150,X=function(h){return h/24*W;};
+  var sun=S.sun[ds],vals=t.ser.map(function(p){return p[1];}),mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals);
+  if(mx-mn<20){var c=(mx+mn)/2;mn=c-10;mx=c+10;}
+  var Y=function(v){return 26+(mx-v)/(mx-mn)*90;};
+  var svg='<svg class="chart" viewBox="0 0 '+W+' '+H+'" width="100%" role="img"><title>'+labelDate(ds)+'の潮位</title>';
+  if(sun){
+    var r=mins(sun.rise)/60,st=mins(sun.set)/60;
+    svg+='<rect class="night" x="0" y="12" width="'+X(r).toFixed(1)+'" height="106"/><rect class="night" x="'+X(st).toFixed(1)+'" y="12" width="'+(W-X(st)).toFixed(1)+'" height="106"/>';
+  }
+  windows(ds).forEach(function(w){
+    var a=Math.max(0,w.s)/60,b=Math.min(1440,w.e)/60;
+    svg+='<rect class="band" x="'+X(a).toFixed(1)+'" y="12" width="'+(X(b)-X(a)).toFixed(1)+'" height="106"/>';
+  });
+  for(var k=1;k<8;k++){svg+='<line class="ax" x1="'+X(k*3)+'" x2="'+X(k*3)+'" y1="12" y2="118"/>';}
+  var p=t.ser,d='M'+X(p[0][0]).toFixed(1)+','+Y(p[0][1]).toFixed(1);
+  for(var i=1;i<p.length-1;i++){
+    var cx=X(p[i][0]),cy=Y(p[i][1]),nx=(cx+X(p[i+1][0]))/2,ny=(cy+Y(p[i+1][1]))/2;
+    d+=' Q'+cx.toFixed(1)+','+cy.toFixed(1)+' '+nx.toFixed(1)+','+ny.toFixed(1);
+  }
+  d+=' L'+X(p[p.length-1][0]).toFixed(1)+','+Y(p[p.length-1][1]).toFixed(1);
+  svg+='<path class="line" d="'+d+'"/>';
+  t.ext.forEach(function(e){
+    if(e.t<0.4||e.t>23.6)return;
+    var x=X(e.t),y=Y(e.cm),up=e.type==='満',anc=x<32?'start':(x>W-32?'end':'middle');
+    svg+='<circle class="dot" cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="3.5"/>'+
+      '<text x="'+x.toFixed(1)+'" y="'+(up?y-8:y+16).toFixed(1)+'" text-anchor="'+anc+'">'+e.type+' '+e.time+'</text>';
+  });
+  if(ds===n.date){var nxp=X(n.h+n.m/60);svg+='<line class="now" x1="'+nxp.toFixed(1)+'" x2="'+nxp.toFixed(1)+'" y1="12" y2="118"/>';}
+  return svg+'</svg>';
+}
+function jiai(ds,t,k,mxw,rs){
+  var a=k*3,sc=0,m=0;
+  windows(ds).forEach(function(w){m+=Math.max(0,Math.min(w.e,(a+3)*60)-Math.max(w.s,a*60));});
+  if(m>=60)sc+=2;else if(m>0)sc+=1;
+  if(t){
+    var vals=t.ser.map(function(p){return p[1];}),rg=Math.max(10,Math.max.apply(null,vals)-Math.min.apply(null,vals));
+    if(Math.abs(lvl(t.ser,a+3)-lvl(t.ser,a))/rg>=0.5)sc+=1;
+  }
+  if(mxw!=null&&mxw>=STRONG)sc-=1;
+  if(rs>=1)sc-=1;
+  return Math.max(0,Math.min(3,sc));
+}
+function renderTide(){
+  var n=nowJST(),ds=addDays(n.date,UI.td),t=S.tide[ds],sun=S.sun[ds];
+  var h='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'+
+    '<button type="button" class="ghost" data-td="-1" aria-label="前の日" style="width:44px;padding:8px 0;font-size:18px">‹</button>'+
+    '<div style="text-align:center"><p style="margin:0;font-size:17px;font-weight:700;line-height:1.4">'+labelDate(ds)+'</p>'+
+    '<p class="mut" style="margin:0;font-size:12px">'+shio(ds)+(sun?'　日の出 '+sun.rise.replace(/^0/,'')+'　日の入り '+sun.set.replace(/^0/,''):'')+'</p></div>'+
+    '<button type="button" class="ghost" data-td="1" aria-label="次の日" style="width:44px;padding:8px 0;font-size:18px">›</button></div>';
+  var cols=[];
+  for(var k=0;k<8;k++){
+    var a=k*3,mxw=null,mwd=null,ts=0,tn=0,rs=0,ws2=0,wn=0,code=null,has=false;
+    for(var hh=a;hh<a+3;hh++){
+      var key=ds+'T'+pad(hh)+':00',w=S.wx[key],wv=S.wave[key];
+      if(w){has=true;
+        if(w.ws!=null&&(mxw===null||w.ws>mxw)){mxw=w.ws;mwd=w.wd;}
+        if(w.temp!=null){ts+=w.temp;tn++;}
+        if(w.rain!=null)rs+=w.rain;
+        if(hh===a+1)code=w.code;}
+      if(wv!=null){ws2+=wv;wn++;}
+    }
+    cols.push({has:has,code:code,temp:tn?Math.round(ts/tn):null,wind:mxw,wd:mwd,rain:rs,wave:wn?ws2/wn:null,ji:jiai(ds,t,k,mxw,rs)});
+  }
+  h+='<div class="card" style="padding:12px 10px"><div class="tg">';
+  h+='<div></div><div style="grid-column:2 / span 8">'+(t?tideSvg(ds,t,n):'<p class="mut" style="margin:24px 0">潮位を取得できませんでした。</p>')+'</div><div></div>';
+  for(var q=0;q<8;q++)h+='<div class="h">'+(q*3)+'</div>';
+  var row=function(label,fn){h+='<div class="lb">'+label+'</div>';cols.forEach(function(c,i){h+='<div class="c">'+fn(c,i)+'</div>';});};
+  row('天気',function(c,i){return c.code!=null?ico(c.code,isNight(ds,i*3+1)):'—';});
+  row('気温',function(c){return c.temp!=null?c.temp+'°':'—';});
+  row('風',function(c){return c.wind!=null?'<span'+(c.wind>=STRONG?' class="ws"':'')+'>'+arrow(c.wd)+Math.round(c.wind)+'</span>':'—';});
+  row('雨',function(c){return c.has?'<span'+(c.rain>=1?' class="rn"':'')+'>'+(c.rain>0?c.rain.toFixed(1):'0')+'</span>':'—';});
+  row('波',function(c){return c.wave!=null?c.wave.toFixed(1):'—';});
+  row('時合い',function(c){var b='';for(var j=0;j<3;j++)b+='<i class="'+(j<c.ji?'on':'')+'" style="height:'+(6+j*3)+'px"></i>';return '<span class="bars" role="img" aria-label="時合い '+c.ji+'／3">'+b+'</span>';});
+  h+='</div><div class="legend"><span><i style="background:var(--mz)"></i>マズメ</span><span><i style="background:var(--bg)"></i>夜</span><span><i style="background:var(--sea-tint)"></i>雨 1mm以上</span><span><i style="background:var(--wd)"></i>風 '+STRONG+'m以上</span></div></div>';
+  h+='<p class="mut" style="margin:8px 4px 0;font-size:11px">下の表は3時間ごとです。風は最大（m/s）、雨は合計（mm）、気温と波は平均です。「時合い」は、マズメと潮の動きから出した目安で、風が強いときや雨のときは下がります。</p>';
+  $('#v-tide').innerHTML=h;
+}
 function renderHourly(){
   var n=nowJST(),ds=addDays(n.date,UI.hd);
   var h=weekCard(n);
@@ -726,7 +816,7 @@ function renderAreaBar(){
   $('#areabar').innerHTML=h;
   $('.top .loc').textContent='京都府 舞鶴'+(UI.area==='舞鶴'?'':'（'+UI.area+'）');
 }
-function renderAll(){renderAreaBar();renderToday();renderHourly();renderCatch();}
+function renderAll(){renderAreaBar();renderToday();renderTide();renderHourly();renderCatch();}
 
 function setStatus(){
   var o=S.ok,mark=function(v){return v===null?'…':(v?'○':'×');};
@@ -951,17 +1041,18 @@ function importJ(file){
 function setTab(t){
   UI.tab=t;
   $('#areabar').hidden=(t==='catch');
-  ['today','hourly','catch'].forEach(function(k){$('#v-'+k).hidden=k!==t;});
+  ['today','tide','hourly','catch'].forEach(function(k){$('#v-'+k).hidden=k!==t;});
   document.querySelectorAll('.tabs button').forEach(function(b){b.classList.toggle('on',b.dataset.tab===t);});
   window.scrollTo(0,0);
 }
 
 document.addEventListener('click',function(e){
-  var t=e.target.closest('[data-tab],[data-hd],[data-spot],[data-del],[data-act],[data-pid],[data-area],[data-gps],[data-find],[data-pick],[data-clr],[data-rm]');
+  var t=e.target.closest('[data-tab],[data-hd],[data-spot],[data-del],[data-act],[data-pid],[data-area],[data-gps],[data-find],[data-pick],[data-clr],[data-rm],[data-td]');
   if(!t)return;
   if(t.dataset.tab){setTab(t.dataset.tab);return;}
   if(t.dataset.hd!=null){UI.hd=+t.dataset.hd;renderHourly();return;}
   if(t.dataset.spot){UI.spot=(t.dataset.spot!=='すべて'&&UI.spot===t.dataset.spot)?'すべて':t.dataset.spot;renderCatch();return;}
+  if(t.dataset.td){UI.td=Math.max(0,Math.min(6,UI.td+(+t.dataset.td)));renderTide();return;}
   if(t.dataset.area){setArea(t.dataset.area);return;}
   if(t.dataset.gps){useHere(t.dataset.gps);return;}
   if(t.dataset.find){findSpot(t.dataset.find);return;}
