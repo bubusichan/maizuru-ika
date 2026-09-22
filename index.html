@@ -252,6 +252,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 
     <span class="lbl">時間帯</span>
     <div id="f-times" class="chips"></div>
+    <p class="mut" style="margin:6px 0 0">複数選べます。</p>
     <div id="f-auto" class="auto"></div>
 
     <span class="lbl">釣れた数</span>
@@ -271,6 +272,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 
     <span class="lbl">エギの号数</span>
     <div id="f-egi" class="chips"></div>
+    <p class="mut" style="margin:6px 0 0">複数選べます。</p>
 
     <span class="lbl">写真（3枚まで）</span>
     <div id="f-photos" class="thumbs"></div>
@@ -317,6 +319,12 @@ var STRONG=6;
 var SPOTS0=['田井','神崎','大浦','西舞鶴'];
 var SLOTS=['朝マズメ','日中','夕マズメ','夜'];
 var EGI=['2.0号','2.5号','3.0号','3.5号'];
+function slotsOf(r){return r.slots?r.slots:(r.slot?[r.slot]:[]);}
+function egisOf(r){return r.egis?r.egis:(r.egi?[r.egi]:[]);}
+function primarySlot(times){
+  for(var i=0;i<SLOTS.length;i++){if(times.indexOf(SLOTS[i])>=0)return SLOTS[i];}
+  return times&&times[0]||null;
+}
 
 var $=function(s,r){return (r||document).querySelector(s);};
 var pad=function(n){return String(n).padStart(2,'0');};
@@ -330,7 +338,7 @@ var store={
 
 var S={wx:{},sun:{},wave:{},tide:{},rec:[],spots:[],ok:{wx:null,wave:null,tide:null},tideSrc:'',updated:null,pos:{},areaCache:{},waveOff:false};
 var UI={tab:'today',tres:1,td:0,hd:0,all:false,spot:'すべて',area:'舞鶴',found:null};
-var F={spot:'',time:'朝マズメ',egi:'',n:0,photos:[],id:null,origPhotoIds:[]};
+var F={spot:'',times:['朝マズメ'],egis:[],n:0,photos:[],id:null,origPhotoIds:[]};
 var MAXPH=3;
 
 function nowJST(){
@@ -825,8 +833,9 @@ function renderCatch(){
     var zero=r.n===0,tags='';
     [r.wind&&'風 '+r.wind,r.wave&&'波 '+r.wave,r.tide].forEach(function(x){if(x)tags+='<span class="tag">'+esc(x)+'</span>';});
     var size=(r.smin||r.smax)?'胴長 '+(r.smin||'?')+'〜'+(r.smax||'?')+'cm':'';
-    var det=[size,r.egi?'エギ '+r.egi:''].filter(Boolean).join('　');
-    h+='<article class="card rec"><div class="h"><div><p class="spot">'+esc(r.spot)+'</p><p class="dt">'+labelDate(r.date)+'　'+esc(r.slot)+'</p></div>'+
+    var egis=egisOf(r),slots=slotsOf(r);
+    var det=[size,egis.length?'エギ '+egis.join('・'):''].filter(Boolean).join('　');
+    h+='<article class="card rec"><div class="h"><div><p class="spot">'+esc(r.spot)+'</p><p class="dt">'+labelDate(r.date)+'　'+esc(slots.join('・'))+'</p></div>'+
       '<p class="n'+(zero?' zero':'')+'">'+r.n+'<span>杯</span></p></div>'+
       (det?'<p class="d">'+esc(det)+'</p>':'')+
       (r.memo?'<p class="d mut">'+esc(r.memo)+'</p>':'')+
@@ -1009,29 +1018,48 @@ function chip(container,arr,key,clearable,fmt){
     el.appendChild(b);
   });
 }
+function chipMulti(container,arr,key){
+  var el=$(container);el.innerHTML='';
+  arr.forEach(function(x){
+    var on=F[key].indexOf(x)>=0;
+    var b=document.createElement('button');b.type='button';b.className='chip'+(on?' on':'');b.textContent=x;
+    b.setAttribute('aria-pressed',on?'true':'false');
+    b.onclick=function(){
+      var i=F[key].indexOf(x);
+      if(i>=0)F[key].splice(i,1);else F[key].push(x);
+      if(key==='times')$('#f-err').textContent='';
+      drawForm();
+    };
+    el.appendChild(b);
+  });
+}
 function drawForm(){
   chip('#f-spots',S.spots,'spot',false);
-  chip('#f-times',SLOTS,'time',false);
-  chip('#f-egi',EGI,'egi',true);
+  chipMulti('#f-times',SLOTS,'times');
+  chipMulti('#f-egi',EGI,'egis');
   $('#f-n').textContent=F.n+'杯';
   var nm=(F.spot&&S.pos[F.spot])?F.spot:'舞鶴';
   var e=S.areaCache[nm]||(nm===UI.area?{wx:S.wx,wave:S.wave,sun:S.sun}:{wx:{},wave:{},sun:{}});
-  var d=$('#f-date').value,h=slotHour(d,F.time,e.sun[d]),k=d+'T'+pad(h)+':00',w=e.wx[k],parts=[];
-  if(w&&w.ws!=null)parts.push('風 '+dir8(w.wd)+' '+Math.round(w.ws)+'m');
-  if(e.wave[k]!=null)parts.push('波 '+e.wave[k].toFixed(1)+'m');
+  var d=$('#f-date').value,ps=primarySlot(F.times),parts=[];
+  if(ps){
+    var h=slotHour(d,ps,e.sun[d]),k=d+'T'+pad(h)+':00',w=e.wx[k];
+    if(w&&w.ws!=null)parts.push('風 '+dir8(w.wd)+' '+Math.round(w.ws)+'m');
+    if(e.wave[k]!=null)parts.push('波 '+e.wave[k].toFixed(1)+'m');
+  }
   parts.push(shio(d));
-  $('#f-auto').textContent=parts.length?'保存時に自動で記録：'+parts.join('・'):'この日の風・波・潮の予報値が取得できないため、状況は記録されません。';
+  var note=(ps&&F.times.length>1)?'（'+ps+'の時点）':'';
+  $('#f-auto').textContent=(ps&&parts.length)?'保存時に自動で記録：'+parts.join('・')+note:(ps?'この日の風・波・潮の予報値が取得できないため、状況は記録されません。':'時間帯を選ぶと、風・波の予報値が自動で記録されます。');
 }
 function openSheet(rec){
   $('#f-perr').textContent='';$('#f-err').textContent='';$('#f-newspot').value='';
   if(rec){
-    F={spot:rec.spot,time:rec.slot,egi:rec.egi||'',n:rec.n,photos:[],id:rec.id,origPhotoIds:(rec.photos||[]).slice()};
+    F={spot:rec.spot,times:slotsOf(rec),egis:egisOf(rec),n:rec.n,photos:[],id:rec.id,origPhotoIds:(rec.photos||[]).slice()};
     $('#f-date').value=rec.date;$('#f-smin').value=rec.smin||'';$('#f-smax').value=rec.smax||'';$('#f-memo').value=rec.memo||'';
     $('#sh-t').textContent='釣果を編集';
     Promise.all((rec.photos||[]).map(function(id){return phGet(id).then(function(u){return{id:id,url:u};},function(){return{id:id,url:''};});}))
       .then(function(list){if(F.id===rec.id){F.photos=list.filter(function(x){return x.url;});drawPhotos();}});
   }else{
-    F={spot:'',time:'朝マズメ',egi:'',n:0,photos:[],id:null,origPhotoIds:[]};
+    F={spot:'',times:['朝マズメ'],egis:[],n:0,photos:[],id:null,origPhotoIds:[]};
     $('#f-date').value=nowJST().date;$('#f-smin').value='';$('#f-smax').value='';$('#f-memo').value='';
     $('#sh-t').textContent='釣果を記録';
   }
@@ -1040,6 +1068,7 @@ function openSheet(rec){
 function closeSheet(){$('#sheet').classList.remove('open');document.body.style.overflow='';}
 function submit(){
   if(!F.spot){$('#f-err').textContent='釣り場を選んでください';return;}
+  if(!F.times.length){$('#f-err').textContent='時間帯を選んでください';return;}
   var d=$('#f-date').value;
   if(!d){$('#f-err').textContent='日付を入力してください';return;}
   var btn=$('#f-save');btn.disabled=true;btn.textContent='保存中…';
@@ -1047,11 +1076,12 @@ function submit(){
   var editing=!!F.id;
   var toDelete=editing?F.origPhotoIds.filter(function(id){return !list.some(function(p){return p.id===id;});}):[];
   var prev=editing?S.rec.find(function(x){return x.id===F.id;}):null;
-  getConds(d,F.time,F.spot).then(function(c){
+  var times=F.times.slice(),egis=F.egis.slice();
+  getConds(d,primarySlot(times),F.spot).then(function(c){
     return savePhotos(list).then(function(r){
       var rec={id:editing?F.id:newId(),ts:editing?((prev&&prev.ts)||Date.now()):Date.now(),
-        date:d,slot:F.time,spot:F.spot,n:F.n,
-        smin:$('#f-smin').value,smax:$('#f-smax').value,egi:F.egi,memo:$('#f-memo').value.trim(),
+        date:d,slots:times,spot:F.spot,n:F.n,
+        smin:$('#f-smin').value,smax:$('#f-smax').value,egis:egis,memo:$('#f-memo').value.trim(),
         wind:c.wind||'',wave:c.wave||'',tide:c.tide||'',photos:r.ids};
       if(editing){
         var idx=S.rec.findIndex(function(x){return x.id===F.id;});
