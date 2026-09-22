@@ -858,9 +858,9 @@ function renderCatch(){
 
 var KUMA_AREAS={
   maizuru:{label:'舞鶴(京都府)',name:'舞鶴市',url:'https://www.city.maizuru.kyoto.jp/kurashi/0000006199.html'},
-  takahama_oi:{label:'高浜・おおい(福井)',name:'福井県',url:'https://www.pref.fukui.lg.jp/doc/shizen/tixyouzixyuu/tukinowaguma2.html'},
-  obama:{label:'小浜(福井)',name:'福井県',url:'https://www.pref.fukui.lg.jp/doc/shizen/tixyouzixyuu/tukinowaguma2.html'},
-  tsuruga:{label:'敦賀(福井)',name:'敦賀市',url:'https://www.city.tsuruga.lg.jp/page/4251.html'},
+  takahama_oi:{label:'高浜・おおい(福井)',name:'福井県（地図）',url:'https://tsukinowaguma.pref.fukui.lg.jp/KUMA/Top.aspx'},
+  obama:{label:'小浜(福井)',name:'福井県（地図）',url:'https://tsukinowaguma.pref.fukui.lg.jp/KUMA/Top.aspx'},
+  tsuruga:{label:'敦賀(福井)',name:'福井県（地図）',url:'https://tsukinowaguma.pref.fukui.lg.jp/KUMA/Top.aspx'},
   other:{label:'その他',name:'',url:''}
 };
 var KUMA_ORDER=['maizuru','takahama_oi','obama','tsuruga','other'];
@@ -892,7 +892,7 @@ function renderKuma(){
   }
   h+='<h2>都道府県の公式情報</h2>'+
     '<div class="card" style="margin-bottom:10px"><a class="btn" href="https://www.pref.kyoto.jp/choujyu/kumanitsuite.html" target="_blank" rel="noopener" style="text-align:center;display:block">京都府の出没情報を見る</a></div>'+
-    '<div class="card" style="margin-bottom:10px"><a class="btn" href="https://www.pref.fukui.lg.jp/doc/shizen/tixyouzixyuu/tukinowaguma2.html" target="_blank" rel="noopener" style="text-align:center;display:block">福井県の出没情報を見る</a></div>'+
+    '<div class="card" style="margin-bottom:10px"><a class="btn" href="https://tsukinowaguma.pref.fukui.lg.jp/KUMA/Top.aspx" target="_blank" rel="noopener" style="text-align:center;display:block">福井県のクマ出没マップ「福井クマ情報」を見る</a></div>'+
     '<p class="mut" style="font-size:11px">情報は京都府・福井県などの公式サイトへのリンクです。このアプリ自身は出没情報を持っていません。最新の状況は必ずリンク先でご確認ください。</p>';
   $('#v-kuma').innerHTML=h;
 }
