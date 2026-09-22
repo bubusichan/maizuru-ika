@@ -200,8 +200,6 @@ input[type=text],input[type=date],input[type=number],textarea{width:100%;font:in
 .tg .bars i{display:inline-block;width:5px;border-radius:1px;margin:0 1px;background:var(--line)}
 .tg .bars i.on{background:var(--sea)}
 .chart .night{fill:var(--bg)}
-@keyframes tabin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:no-preference){.view:not([hidden]){animation:tabin .16s ease}}
 .foot{margin:24px 0 0;font-size:11px;color:var(--sub);line-height:1.7}
 .foot a{color:var(--sea-ink);text-decoration:underline}
 .foot input{width:90px;display:inline-block;padding:4px 8px;font-size:14px}
@@ -222,7 +220,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 
 <div id="areabar" class="areabar"></div>
 
-<main class="wrap" id="main">
+<main class="wrap" id="main" style="position:relative;overflow-x:hidden">
   <section id="v-today" class="view"></section>
   <section id="v-tide" class="view" hidden></section>
   <section id="v-hourly" class="view" hidden></section>
@@ -1072,15 +1070,52 @@ function importJ(file){
   r.readAsText(file);
 }
 
-function setTab(t){
-  UI.tab=t;
-  $('#areabar').hidden=(t==='catch');
-  ['today','tide','hourly','catch'].forEach(function(k){$('#v-'+k).hidden=k!==t;});
-  document.querySelectorAll('.tabs button').forEach(function(b){b.classList.toggle('on',b.dataset.tab===t);});
-  window.scrollTo(0,0);
+var TAB_ORDER=['today','tide','hourly','catch'];
+var EASE='.26s cubic-bezier(.22,.61,.36,1)';
+
+function setTab(t){animateTab(t);}
+
+function springBack(sec){
+  sec.style.transition='transform .22s cubic-bezier(.22,.61,.36,1), opacity .22s ease';
+  sec.style.transform='translateX(0)';sec.style.opacity='1';
+  sec.addEventListener('transitionend',function done(){sec.removeEventListener('transitionend',done);sec.style.transition='';sec.style.transform='';sec.style.opacity='';},{once:true});
 }
 
-var TAB_ORDER=['today','tide','hourly','catch'];
+function animateTab(newTab,opts){
+  if(newTab===UI.tab||TAB_ORDER.indexOf(newTab)<0)return;
+  opts=opts||{};
+  var oldTab=UI.tab,dir=TAB_ORDER.indexOf(newTab)>TAB_ORDER.indexOf(oldTab)?1:-1;
+  var oldSec=opts.fromSec||$('#v-'+oldTab),newSec=$('#v-'+newTab);
+  UI.tab=newTab;
+  $('#areabar').hidden=(newTab==='catch');
+  document.querySelectorAll('.tabs button').forEach(function(b){b.classList.toggle('on',b.dataset.tab===newTab);});
+  var startPx=opts.startPx||0;
+  oldSec.hidden=false;
+  oldSec.style.position='absolute';oldSec.style.top='0';oldSec.style.left='0';oldSec.style.right='0';oldSec.style.zIndex='2';
+  oldSec.style.transition='none';oldSec.style.transform='translateX('+startPx+'px)';
+  oldSec.style.opacity=String(Math.max(.6,1-Math.abs(startPx)/500));
+  newSec.hidden=false;
+  newSec.style.transition='none';newSec.style.transform='translateX('+(dir*100)+'%)';newSec.style.opacity='.6';
+  void oldSec.offsetHeight;void newSec.offsetHeight;
+  window.scrollTo(0,0);
+  requestAnimationFrame(function(){
+    oldSec.style.transition='transform '+EASE+', opacity '+EASE;
+    newSec.style.transition='transform '+EASE+', opacity '+EASE;
+    oldSec.style.transform='translateX('+(-dir*100)+'%)';oldSec.style.opacity='.3';
+    newSec.style.transform='translateX(0)';newSec.style.opacity='1';
+  });
+  oldSec.addEventListener('transitionend',function done(){
+    oldSec.removeEventListener('transitionend',done);
+    oldSec.hidden=true;
+    oldSec.style.position='';oldSec.style.top='';oldSec.style.left='';oldSec.style.right='';oldSec.style.zIndex='';
+    oldSec.style.transition='';oldSec.style.transform='';oldSec.style.opacity='';
+  },{once:true});
+  newSec.addEventListener('transitionend',function done(){
+    newSec.removeEventListener('transitionend',done);
+    newSec.style.transition='';newSec.style.transform='';newSec.style.opacity='';
+  },{once:true});
+}
+
 function hScrollable(el){
   while(el&&el!==document.body){
     if(el.scrollWidth>el.clientWidth+2){
@@ -1092,27 +1127,52 @@ function hScrollable(el){
   return false;
 }
 (function(){
-  var mainEl=$('#main'),sx=0,sy=0,st=0,skip=false;
+  var mainEl=$('#main');
+  var drag={active:false,locked:null,sx:0,sy:0,dx:0,sec:null,skip:false};
   mainEl.addEventListener('touchstart',function(e){
-    if(e.touches.length!==1||document.body.style.overflow==='hidden'||$('#lb').classList.contains('open')){skip=true;return;}
-    skip=hScrollable(e.target);
-    var t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now();
+    if(e.touches.length!==1||document.body.style.overflow==='hidden'||$('#lb').classList.contains('open')){drag.skip=true;return;}
+    drag.skip=hScrollable(e.target);
+    if(drag.skip)return;
+    var t=e.touches[0];
+    drag.sx=t.clientX;drag.sy=t.clientY;drag.dx=0;drag.locked=null;drag.active=false;
+    drag.sec=document.querySelector('#main .view:not([hidden])');
   },{passive:true});
-  mainEl.addEventListener('touchend',function(e){
-    if(skip)return;
-    var t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;
-    if(Date.now()-st>700)return;
-    if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.5)return;
+  mainEl.addEventListener('touchmove',function(e){
+    if(drag.skip||!drag.sec)return;
+    var t=e.touches[0],dx=t.clientX-drag.sx,dy=t.clientY-drag.sy;
+    if(drag.locked===null){
+      if(Math.abs(dx)<10&&Math.abs(dy)<10)return;
+      drag.locked=Math.abs(dx)>Math.abs(dy)?'h':'v';
+      if(drag.locked==='h'){drag.active=true;drag.sec.style.transition='none';}
+    }
+    if(drag.locked!=='h')return;
+    e.preventDefault();
     var i=TAB_ORDER.indexOf(UI.tab);
-    if(dx<0&&i<TAB_ORDER.length-1)setTab(TAB_ORDER[i+1]);
-    else if(dx>0&&i>0)setTab(TAB_ORDER[i-1]);
+    var atStart=i===0&&dx>0,atEnd=i===TAB_ORDER.length-1&&dx<0;
+    drag.dx=(atStart||atEnd)?dx*0.35:dx;
+    drag.sec.style.transform='translateX('+drag.dx+'px)';
+    drag.sec.style.opacity=String(Math.max(.6,1-Math.abs(drag.dx)/500));
+  },{passive:false});
+  mainEl.addEventListener('touchend',function(){
+    if(drag.skip||!drag.active){drag.skip=false;drag.sec=null;return;}
+    var i=TAB_ORDER.indexOf(UI.tab);
+    var W=(drag.sec.getBoundingClientRect().width)||320;
+    var far=Math.abs(drag.dx)>Math.min(120,W*0.28);
+    if(drag.dx<0&&far&&i<TAB_ORDER.length-1)animateTab(TAB_ORDER[i+1],{startPx:drag.dx,fromSec:drag.sec});
+    else if(drag.dx>0&&far&&i>0)animateTab(TAB_ORDER[i-1],{startPx:drag.dx,fromSec:drag.sec});
+    else springBack(drag.sec);
+    drag.sec=null;drag.active=false;drag.skip=false;
+  },{passive:true});
+  mainEl.addEventListener('touchcancel',function(){
+    if(drag.sec&&drag.active)springBack(drag.sec);
+    drag.sec=null;drag.active=false;drag.skip=false;
   },{passive:true});
 })();
 
 document.addEventListener('click',function(e){
   var t=e.target.closest('[data-tab],[data-hd],[data-spot],[data-del],[data-act],[data-pid],[data-area],[data-gps],[data-find],[data-pick],[data-clr],[data-rm],[data-td],[data-tres],[data-th]');
   if(!t)return;
-  if(t.dataset.tab){setTab(t.dataset.tab);return;}
+  if(t.dataset.tab){animateTab(t.dataset.tab);return;}
   if(t.dataset.hd!=null){UI.hd=+t.dataset.hd;renderHourly();return;}
   if(t.dataset.spot){UI.spot=(t.dataset.spot!=='すべて'&&UI.spot===t.dataset.spot)?'すべて':t.dataset.spot;renderCatch();return;}
   if(t.dataset.th){
