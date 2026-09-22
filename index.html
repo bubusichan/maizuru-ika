@@ -14,7 +14,7 @@
 <title>舞鶴アオリイカ</title>
 <style>
 :root{
-  --bg:#EAF1F1;--card:#FFFFFF;--ink:#14293A;--sub:#5B7180;--line:#D3DFE1;
+  --bg:#EAF1F1;--bg-solid:#EAF1F1;--card:#FFFFFF;--ink:#14293A;--sub:#5B7180;--line:#D3DFE1;
   --sea:#1E6178;--sea-ink:#124556;--sea-tint:#DCEBEF;
   --mz:#F5E6BF;--mz-ink:#6B4A0B;
   --wd:#F6D8D2;--wd-ink:#8A2A1E;
@@ -22,7 +22,7 @@
   --danger:#B23A2C;
 }
 :root[data-theme="dark"]{color-scheme:dark;
-  --bg:#000000;--card:#111417;--ink:#E9EFF1;--sub:#96A5AD;--line:#2A3238;
+  --bg:#000000;--bg-solid:#000000;--card:#111417;--ink:#E9EFF1;--sub:#96A5AD;--line:#2A3238;
     --sea:#7DBFD6;--sea-ink:#BFE3EF;--sea-tint:#14303B;
     --mz:#4A3B16;--mz-ink:#F1D998;
     --wd:#55271F;--wd-ink:#F4B9B0;
@@ -31,7 +31,7 @@
 }
 @media (prefers-color-scheme:dark){
   :root[data-theme="auto"]{color-scheme:dark;
-  --bg:#000000;--card:#111417;--ink:#E9EFF1;--sub:#96A5AD;--line:#2A3238;
+  --bg:#000000;--bg-solid:#000000;--card:#111417;--ink:#E9EFF1;--sub:#96A5AD;--line:#2A3238;
     --sea:#7DBFD6;--sea-ink:#BFE3EF;--sea-tint:#14303B;
     --mz:#4A3B16;--mz-ink:#F1D998;
     --wd:#55271F;--wd-ink:#F4B9B0;
@@ -42,6 +42,7 @@
 :root[data-theme="light"]{color-scheme:light}
 :root[data-theme="ocean"]{color-scheme:light;
   --bg:linear-gradient(180deg,#7EDEF2 0%,#4FB6DE 55%,#2696D6 100%);
+  --bg-solid:#EAF6FB;
   --card:#F3FBFD;--ink:#123247;--sub:#4F7889;--line:#BFE6EF;
   --sea:#1E6178;--sea-ink:#124556;--sea-tint:#DCEBEF;
   --mz:#F5E6BF;--mz-ink:#6B4A0B;
@@ -67,7 +68,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
 button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .ghost{background:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--ink)}
 .btn{display:block;width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:15px}
-.btn.pri{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:700}
+.btn.pri{background:var(--ink);color:var(--bg-solid);border-color:var(--ink);font-weight:700}
 .btn:disabled{opacity:.6}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
 .mut{color:var(--sub);font-size:13px}
@@ -160,7 +161,7 @@ input[type=text],input[type=date],input[type=number],textarea{width:100%;font:in
 .step output{min-width:64px;text-align:center;font-size:26px;font-weight:700}
 .auto{margin-top:8px;background:var(--bg);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--sub)}
 .err{margin:6px 0 0;font-size:13px;color:var(--danger);min-height:1em}
-#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-size:14px;z-index:30;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg-solid);padding:10px 18px;border-radius:999px;font-size:14px;z-index:30;opacity:0;pointer-events:none;transition:opacity .2s}
 #toast.show{opacity:1}
 .thumbs,.ph{display:flex;flex-wrap:wrap;gap:8px}
 .ph{margin-top:8px}
@@ -168,7 +169,7 @@ input[type=text],input[type=date],input[type=number],textarea{width:100%;font:in
 .ph img.miss{opacity:.3}
 .pt{position:relative;width:88px;height:88px}
 .pt img{width:100%;height:100%;object-fit:cover;border-radius:8px}
-.pt .x{position:absolute;top:-6px;right:-6px;width:28px;height:28px;border-radius:50%;border:0;background:var(--ink);color:var(--bg);font-size:16px;line-height:1;padding:0}
+.pt .x{position:absolute;top:-6px;right:-6px;width:28px;height:28px;border-radius:50%;border:0;background:var(--ink);color:var(--bg-solid);font-size:16px;line-height:1;padding:0}
 .lb{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:40;display:none;align-items:center;justify-content:center;padding:12px}
 .lb.open{display:flex}
 .lb img{max-width:100%;max-height:100%;object-fit:contain}
@@ -199,7 +200,7 @@ input[type=text],input[type=date],input[type=number],textarea{width:100%;font:in
 .tg .bars{display:inline-flex;align-items:flex-end;height:16px}
 .tg .bars i{display:inline-block;width:5px;border-radius:1px;margin:0 1px;background:var(--line)}
 .tg .bars i.on{background:var(--sea)}
-.chart .night{fill:var(--bg)}
+.chart .night{fill:var(--bg-solid)}
 .foot{margin:24px 0 0;font-size:11px;color:var(--sub);line-height:1.7}
 .foot a{color:var(--sea-ink);text-decoration:underline}
 .foot input{width:90px;display:inline-block;padding:4px 8px;font-size:14px}
@@ -772,7 +773,7 @@ function renderTide(){
   row('雨',function(c){return c.has?'<span'+(c.rain>=1?' class="rn"':'')+'>'+(c.rain>0?c.rain.toFixed(1):'0')+'</span>':'—';});
   row('波',function(c){return c.wave!=null?c.wave.toFixed(1):'—';});
   row('時合い',function(c){var b='';for(var j=0;j<3;j++)b+='<i class="'+(j<c.ji?'on':'')+'" style="height:'+(6+j*3)+'px"></i>';return '<span class="bars" role="img" aria-label="時合い '+c.ji+'／3">'+b+'</span>';});
-  h+='</div></div><div class="legend" style="margin:8px 10px 0"><span><i style="background:var(--mz)"></i>マズメ</span><span><i style="background:var(--bg)"></i>夜</span><span><i style="background:var(--sea-tint)"></i>雨 1mm以上</span><span><i style="background:var(--wd)"></i>風 '+STRONG+'m以上</span></div></div>';
+  h+='</div></div><div class="legend" style="margin:8px 10px 0"><span><i style="background:var(--mz)"></i>マズメ</span><span><i style="background:var(--bg-solid)"></i>夜</span><span><i style="background:var(--sea-tint)"></i>雨 1mm以上</span><span><i style="background:var(--wd)"></i>風 '+STRONG+'m以上</span></div></div>';
   h+='<p class="mut" style="margin:8px 4px 0;font-size:11px">'+(step===1?'24時間の表は、横にスライドして見られます。上の数字は時刻（時）です。':'3時間ごとの表です。風は最大、雨は合計、気温と波は平均です。')+'「時合い」は、マズメと潮の動きから出した目安で、風が強いときや雨のときは下がります。</p>';
   $('#v-tide').innerHTML=h;
   var sc=$('#tscroll');
