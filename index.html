@@ -60,6 +60,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
   font:15px/1.6 "Hiragino Sans","Hiragino Kaku Gothic ProN","BIZ UDPGothic","Yu Gothic UI","Yu Gothic",Meiryo,system-ui,sans-serif;
   font-variant-numeric:tabular-nums;
   padding:env(safe-area-inset-top) 0 calc(72px + env(safe-area-inset-bottom));}
+a{color:inherit;text-decoration:none}
 .wrap{max-width:520px;margin:0 auto;padding:0 14px}
 .top{max-width:520px;margin:0 auto;padding:14px 14px 4px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
 .top .loc{margin:0;font-size:12px;color:var(--sub)}
@@ -144,8 +145,8 @@ svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;str
 .del{background:none;border:0;color:var(--sub);font-size:12px;padding:6px 0 0;text-decoration:underline}
 .sum{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0 12px}
 
-.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:env(safe-area-inset-bottom);z-index:5}
-.tabs button{background:none;border:0;padding:14px 0 12px;font-size:14px;color:var(--sub);border-top:3px solid transparent;margin-top:-1px}
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+.tabs button{background:none;border:0;padding:14px 0 12px;font-size:12.5px;color:var(--sub);border-top:3px solid transparent;margin-top:-1px}
 .tabs button.on{color:var(--ink);font-weight:700;border-top-color:var(--ink)}
 
 .sheet{position:fixed;inset:0;z-index:20;display:none}
@@ -226,6 +227,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <section id="v-tide" class="view" hidden></section>
   <section id="v-hourly" class="view" hidden></section>
   <section id="v-catch" class="view" hidden></section>
+  <section id="v-kuma" class="view" hidden></section>
 </main>
 
 <nav class="tabs" aria-label="画面の切り替え">
@@ -233,6 +235,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
   <button type="button" data-tab="tide">潮見表</button>
   <button type="button" data-tab="hourly">時間別</button>
   <button type="button" data-tab="catch">釣果</button>
+  <button type="button" data-tab="kuma">熊情報</button>
 </nav>
 
 <div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-t">
@@ -337,7 +340,7 @@ var store={
   del:function(k){try{localStorage.removeItem(k);}catch(e){}}
 };
 
-var S={wx:{},sun:{},wave:{},tide:{},rec:[],spots:[],ok:{wx:null,wave:null,tide:null},tideSrc:'',updated:null,pos:{},areaCache:{},waveOff:false};
+var S={wx:{},sun:{},wave:{},tide:{},rec:[],spots:[],ok:{wx:null,wave:null,tide:null},tideSrc:'',updated:null,pos:{},areaCache:{},waveOff:false,spotarea:{}};
 var UI={tab:'today',tres:1,td:0,hd:0,all:false,spot:'すべて',area:'舞鶴',found:null};
 var F={spot:'',times:['朝マズメ'],egis:[],n:0,photos:[],id:null,origPhotoIds:[]};
 var MAXPH=3;
@@ -658,7 +661,7 @@ function renderToday(){
   h+='<h2>今日の潮位</h2><div class="card">'+chartSvg(ds,n)+'<p class="mut" style="margin:4px 0 0">黄色の帯は朝夕マズメ（日の出・日の入りの前後1時間）</p></div>';
   h+='<div class="foot">'+
     '<p style="margin:0">天気・風：Open-Meteo（選んだ場所の予報値。位置の精度は数km単位です）。波高：Open-Meteo Marine（海の予報モデルの値。湾内は反映されにくく、沖合の値になることがあります）。潮位・潮回り：'+(S.tideSrc==='model'?'Open-Meteo Marine の海面高度モデル（潮汐表の値ではありません）':'tide736.net（海上保安庁 書誌742号の調和定数から計算した推算値）')+'。予報値は目安です。潮位・潮回りは、どの釣り場でも舞鶴の値です。潮位は航海用ではありません。潮回りは、潮汐表にない日や取得できない場合は、0時の月と太陽の位置（気象庁の区分）から計算します。釣具店の潮見表と1日ずれることがあります。</p>'+
-    '<p style="margin:8px 0 0">正確な潮位は、次の潮汐表で確認できます：<a href="https://www.data.jma.go.jp/kaiyou/db/tide/suisan/suisan.php?stn=MZ" target="_blank" rel="noopener">気象庁の潮位表（舞鶴）</a>　<a href="https://tenki.jp/wave/6/29/43/" target="_blank" rel="noopener">tenki.jp（舞鶴港）</a></p>'+
+    '<p style="margin:8px 0 0">正確な潮位は、次の潮汐表で確認できます：<a href="https://www.data.jma.go.jp/kaiyou/db/tide/suisan/suisan.php?stn=MZ" target="_blank" rel="noopener" style="text-decoration:underline">気象庁の潮位表（舞鶴）</a>　<a href="https://tenki.jp/wave/6/29/43/" target="_blank" rel="noopener" style="text-decoration:underline">tenki.jp（舞鶴港）</a></p>'+
     '<p style="margin:12px 0 0">表示の色：'+[['dark','黒'],['light','白'],['ocean','海'],['auto','自動']].map(function(x){return '<button type="button" class="chip'+((store.get('ika.theme','dark')===x[0])?' on':'')+'" data-th="'+x[0]+'" style="margin-right:6px">'+x[1]+'</button>';}).join('')+'</p>'+
     '<p style="margin:8px 0 0">潮汐表の取得状況：'+esc(store.get('ika.hcdiag','まだ確認していません'))+'</p>'+
     '<p style="margin:8px 0 0">潮汐の港コード：<input type="text" id="hc" inputmode="numeric" value="'+esc(store.get('ika.hc',''))+'" aria-label="港コード" placeholder="5"> <button class="ghost" type="button" data-act="sethc">設定</button></p>'+
@@ -853,6 +856,47 @@ function renderCatch(){
   loadPhotos();
 }
 
+var KUMA_AREAS={
+  maizuru:{label:'舞鶴(京都府)',name:'舞鶴市',url:'https://www.city.maizuru.kyoto.jp/kurashi/0000006199.html'},
+  takahama_oi:{label:'高浜・おおい(福井)',name:'福井県',url:'https://www.pref.fukui.lg.jp/doc/shizen/tixyouzixyuu/tukinowaguma2.html'},
+  obama:{label:'小浜(福井)',name:'福井県',url:'https://www.pref.fukui.lg.jp/doc/shizen/tixyouzixyuu/tukinowaguma2.html'},
+  tsuruga:{label:'敦賀(福井)',name:'敦賀市',url:'https://www.city.tsuruga.lg.jp/page/4251.html'},
+  other:{label:'その他',name:'',url:''}
+};
+var KUMA_ORDER=['maizuru','takahama_oi','obama','tsuruga','other'];
+function guessKumaArea(name){
+  name=name||'';
+  if(name.indexOf('舞鶴')>=0)return'maizuru';
+  if(name.indexOf('高浜')>=0||name.indexOf('おおい')>=0)return'takahama_oi';
+  if(name.indexOf('小浜')>=0)return'obama';
+  if(name.indexOf('敦賀')>=0)return'tsuruga';
+  return'other';
+}
+function kumaAreaOf(name){return S.spotarea[name]||guessKumaArea(name);}
+function renderKuma(){
+  var h='<div class="card" style="background:var(--wd);border-color:var(--wd);padding:13px 14px;display:flex;gap:10px;align-items:flex-start;margin-bottom:14px">'+
+    '<div style="color:var(--wd-ink)"><p style="margin:0;font-size:13px;font-weight:700">9〜11月は出没が増える時期です</p>'+
+    '<p style="margin:4px 0 0;font-size:12px;line-height:1.5">早朝・夕方や河口・藪の近くは特に注意してください。最新情報は下の公式サイトで確認してください。</p></div></div>';
+  if(!S.spots.length){
+    h+='<p class="mut">釣り場を登録すると、その場所ごとに熊の出没情報サイトへのリンクが表示されます。「釣果」タブの「釣り場を設定」から追加できます。</p>';
+  }else{
+    h+='<h2 style="margin-top:0">釣り場ごとの公式情報</h2>';
+    S.spots.forEach(function(sp){
+      var a=kumaAreaOf(sp),info=KUMA_AREAS[a];
+      h+='<div class="card" style="margin-bottom:10px">'+
+        '<p style="margin:0;font-weight:700;font-size:14px">'+esc(sp)+'</p>'+
+        '<div class="chips" style="margin:8px 0 10px">'+KUMA_ORDER.map(function(k){return '<button type="button" class="chip'+(a===k?' on':'')+'" data-kspot="'+esc(sp)+'" data-karea="'+k+'" style="font-size:12px;padding:5px 11px">'+KUMA_AREAS[k].label+'</button>';}).join('')+'</div>'+
+        (info.url?'<a class="btn" href="'+esc(info.url)+'" target="_blank" rel="noopener" style="text-align:center;display:block">'+esc(info.name)+'の出没情報を見る</a>':'<p class="mut" style="margin:0;font-size:12px">地域を選ぶと、その自治体の出没情報サイトへのリンクが表示されます。</p>')+
+        '</div>';
+    });
+  }
+  h+='<h2>都道府県の公式情報</h2>'+
+    '<div class="card" style="margin-bottom:10px"><a class="btn" href="https://www.pref.kyoto.jp/choujyu/kumanitsuite.html" target="_blank" rel="noopener" style="text-align:center;display:block">京都府の出没情報を見る</a></div>'+
+    '<div class="card" style="margin-bottom:10px"><a class="btn" href="https://www.pref.fukui.lg.jp/doc/shizen/tixyouzixyuu/tukinowaguma2.html" target="_blank" rel="noopener" style="text-align:center;display:block">福井県の出没情報を見る</a></div>'+
+    '<p class="mut" style="font-size:11px">情報は京都府・福井県などの公式サイトへのリンクです。このアプリ自身は出没情報を持っていません。最新の状況は必ずリンク先でご確認ください。</p>';
+  $('#v-kuma').innerHTML=h;
+}
+
 function renderAreaBar(){
   var names=['舞鶴'].concat(S.spots.filter(function(x){return S.pos[x];}));
   var h='<span class="mut" style="font-size:12px">予報の場所</span>';
@@ -861,7 +905,7 @@ function renderAreaBar(){
   $('#areabar').innerHTML=h;
   $('.top .loc').textContent='京都府 舞鶴'+(UI.area==='舞鶴'?'':'（'+UI.area+'）');
 }
-function renderAll(){renderAreaBar();renderToday();renderTide();renderHourly();renderCatch();}
+function renderAll(){renderAreaBar();renderToday();renderTide();renderHourly();renderCatch();renderKuma();}
 
 function setStatus(){
   var o=S.ok,mark=function(v){return v===null?'…':(v?'○':'×');};
@@ -1125,7 +1169,7 @@ function importJ(file){
   r.readAsText(file);
 }
 
-var TAB_ORDER=['today','tide','hourly','catch'];
+var TAB_ORDER=['today','tide','hourly','catch','kuma'];
 var EASE='.26s cubic-bezier(.22,.61,.36,1)';
 
 function setTab(t){animateTab(t);}
@@ -1142,7 +1186,8 @@ function animateTab(newTab,opts){
   var oldTab=UI.tab,dir=TAB_ORDER.indexOf(newTab)>TAB_ORDER.indexOf(oldTab)?1:-1;
   var oldSec=opts.fromSec||$('#v-'+oldTab),newSec=$('#v-'+newTab);
   UI.tab=newTab;
-  $('#areabar').hidden=(newTab==='catch');
+  $('#areabar').hidden=(newTab==='catch'||newTab==='kuma');
+  if(newTab==='kuma')renderKuma();
   document.querySelectorAll('.tabs button').forEach(function(b){b.classList.toggle('on',b.dataset.tab===newTab);});
   var startPx=opts.startPx||0;
   oldSec.hidden=false;
@@ -1225,7 +1270,7 @@ function hScrollable(el){
 })();
 
 document.addEventListener('click',function(e){
-  var t=e.target.closest('[data-tab],[data-hd],[data-spot],[data-del],[data-act],[data-pid],[data-area],[data-gps],[data-find],[data-pick],[data-clr],[data-rm],[data-td],[data-tres],[data-th],[data-edit]');
+  var t=e.target.closest('[data-tab],[data-hd],[data-spot],[data-del],[data-act],[data-pid],[data-area],[data-gps],[data-find],[data-pick],[data-clr],[data-rm],[data-td],[data-tres],[data-th],[data-edit],[data-karea]');
   if(!t)return;
   if(t.dataset.tab){animateTab(t.dataset.tab);return;}
   if(t.dataset.hd!=null){UI.hd=+t.dataset.hd;renderHourly();return;}
@@ -1238,6 +1283,7 @@ document.addEventListener('click',function(e){
   }
   if(t.dataset.tres){UI.tres=+t.dataset.tres===3?3:1;store.set('ika.tres',UI.tres);renderTide();return;}
   if(t.dataset.td){UI.td=Math.max(0,Math.min(6,UI.td+(+t.dataset.td)));renderTide();return;}
+  if(t.dataset.karea){S.spotarea[t.dataset.kspot]=t.dataset.karea;store.set('ika.spotarea',S.spotarea);renderKuma();return;}
   if(t.dataset.area){setArea(t.dataset.area);return;}
   if(t.dataset.gps){useHere(t.dataset.gps);return;}
   if(t.dataset.find){findSpot(t.dataset.find);return;}
@@ -1247,9 +1293,10 @@ document.addEventListener('click',function(e){
     if(confirm('「'+rn+'」を釣り場の一覧から削除しますか？'+(cnt?'\n記録済みの釣果（'+cnt+'件）は残ります。':''))){
       S.spots=S.spots.filter(function(x){return x!==rn;});store.set('ika.spots',S.spots);
       delete S.pos[rn];store.set('ika.pos',S.pos);delete S.areaCache[rn];
+      delete S.spotarea[rn];store.set('ika.spotarea',S.spotarea);
       if(UI.area===rn)setArea('舞鶴');
       if(F.spot===rn)F.spot='';
-      renderSpotSheet();renderAreaBar();renderCatch();toast('削除しました');
+      renderSpotSheet();renderAreaBar();renderCatch();renderKuma();toast('削除しました');
     }
     return;
   }
@@ -1322,7 +1369,7 @@ document.addEventListener('visibilitychange',function(){
 
 S.rec=store.get('ika.rec.v1',[]);sortRec();
 S.spots=store.get('ika.spots',SPOTS0.slice());
-S.pos=store.get('ika.pos',{});UI.tres=store.get('ika.tres',1)===3?3:1;
+S.pos=store.get('ika.pos',{});S.spotarea=store.get('ika.spotarea',{});UI.tres=store.get('ika.tres',1)===3?3:1;
 try{var _ic=document.querySelector('link[rel="apple-touch-icon"]'),_lg=$('#applogo');if(_ic&&_lg)_lg.src=_ic.href;}catch(e){}UI.area=store.get('ika.area','舞鶴');if(UI.area!=='舞鶴'&&!S.pos[UI.area])UI.area='舞鶴';
 pruneCache();
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
