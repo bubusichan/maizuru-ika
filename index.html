@@ -330,7 +330,7 @@ var store={
 
 var S={wx:{},sun:{},wave:{},tide:{},rec:[],spots:[],ok:{wx:null,wave:null,tide:null},tideSrc:'',updated:null,pos:{},areaCache:{},waveOff:false};
 var UI={tab:'today',tres:1,td:0,hd:0,all:false,spot:'すべて',area:'舞鶴',found:null};
-var F={spot:'',time:'朝マズメ',egi:'',n:0,photos:[]};
+var F={spot:'',time:'朝マズメ',egi:'',n:0,photos:[],id:null,origPhotoIds:[]};
 var MAXPH=3;
 
 function nowJST(){
@@ -832,7 +832,10 @@ function renderCatch(){
       (r.memo?'<p class="d mut">'+esc(r.memo)+'</p>':'')+
       (r.photos&&r.photos.length?'<div class="ph">'+r.photos.map(function(id){return '<img data-pid="'+esc(id)+'" alt="釣果の写真" role="button" width="88" height="88">';}).join('')+'</div>':'')+
       (tags?'<div class="tags">'+tags+'</div>':'')+
-      '<button type="button" class="del" data-del="'+esc(r.id)+'">削除</button></article>';
+      '<div style="display:flex;gap:16px;margin-top:8px">'+
+      '<button type="button" class="del" data-edit="'+esc(r.id)+'">編集</button>'+
+      '<button type="button" class="del" data-del="'+esc(r.id)+'">削除</button>'+
+      '</div></article>';
   });
   h+='<div class="foot"><p style="margin:0">記録はこの端末のブラウザに保存されます。機種変更やデータ消去に備えて、ときどき書き出してください。</p>'+
     '<p style="margin:8px 0 0"><button type="button" class="ghost" data-act="export">書き出し</button> <button type="button" class="ghost" data-act="import">読み込み</button></p></div>';
@@ -1019,10 +1022,19 @@ function drawForm(){
   parts.push(shio(d));
   $('#f-auto').textContent=parts.length?'保存時に自動で記録：'+parts.join('・'):'この日の風・波・潮の予報値が取得できないため、状況は記録されません。';
 }
-function openSheet(){
-  F={spot:'',time:'朝マズメ',egi:'',n:0,photos:[]};
-  $('#f-perr').textContent='';
-  $('#f-date').value=nowJST().date;$('#f-smin').value='';$('#f-smax').value='';$('#f-memo').value='';$('#f-newspot').value='';$('#f-err').textContent='';
+function openSheet(rec){
+  $('#f-perr').textContent='';$('#f-err').textContent='';$('#f-newspot').value='';
+  if(rec){
+    F={spot:rec.spot,time:rec.slot,egi:rec.egi||'',n:rec.n,photos:[],id:rec.id,origPhotoIds:(rec.photos||[]).slice()};
+    $('#f-date').value=rec.date;$('#f-smin').value=rec.smin||'';$('#f-smax').value=rec.smax||'';$('#f-memo').value=rec.memo||'';
+    $('#sh-t').textContent='釣果を編集';
+    Promise.all((rec.photos||[]).map(function(id){return phGet(id).then(function(u){return{id:id,url:u};},function(){return{id:id,url:''};});}))
+      .then(function(list){if(F.id===rec.id){F.photos=list.filter(function(x){return x.url;});drawPhotos();}});
+  }else{
+    F={spot:'',time:'朝マズメ',egi:'',n:0,photos:[],id:null,origPhotoIds:[]};
+    $('#f-date').value=nowJST().date;$('#f-smin').value='';$('#f-smax').value='';$('#f-memo').value='';
+    $('#sh-t').textContent='釣果を記録';
+  }
   drawForm();drawPhotos();$('#sheet').classList.add('open');document.body.style.overflow='hidden';
 }
 function closeSheet(){$('#sheet').classList.remove('open');document.body.style.overflow='';}
@@ -1032,12 +1044,24 @@ function submit(){
   if(!d){$('#f-err').textContent='日付を入力してください';return;}
   var btn=$('#f-save');btn.disabled=true;btn.textContent='保存中…';
   var list=F.photos.slice();
+  var editing=!!F.id;
+  var toDelete=editing?F.origPhotoIds.filter(function(id){return !list.some(function(p){return p.id===id;});}):[];
+  var prev=editing?S.rec.find(function(x){return x.id===F.id;}):null;
   getConds(d,F.time,F.spot).then(function(c){
     return savePhotos(list).then(function(r){
-      S.rec.push({id:newId(),ts:Date.now(),date:d,slot:F.time,spot:F.spot,n:F.n,
-        smin:$('#f-smin').value,smax:$('#f-smax').value,egi:F.egi,memo:$('#f-memo').value.trim(),wind:c.wind||'',wave:c.wave||'',tide:c.tide||'',photos:r.ids});
+      var rec={id:editing?F.id:newId(),ts:editing?((prev&&prev.ts)||Date.now()):Date.now(),
+        date:d,slot:F.time,spot:F.spot,n:F.n,
+        smin:$('#f-smin').value,smax:$('#f-smax').value,egi:F.egi,memo:$('#f-memo').value.trim(),
+        wind:c.wind||'',wave:c.wave||'',tide:c.tide||'',photos:r.ids};
+      if(editing){
+        var idx=S.rec.findIndex(function(x){return x.id===F.id;});
+        if(idx>=0)S.rec[idx]=rec;else S.rec.push(rec);
+        toDelete.forEach(function(id){phDel(id).catch(function(){});});
+      }else{
+        S.rec.push(rec);
+      }
       sortRec();saveRec();closeSheet();renderCatch();
-      toast(r.failed?'記録を保存しました（写真は保存できませんでした）':'保存しました');
+      toast(r.failed?(editing?'更新しました（写真は保存できませんでした）':'記録を保存しました（写真は保存できませんでした）'):(editing?'更新しました':'保存しました'));
     });
   }).then(function(){btn.disabled=false;btn.textContent='保存';},function(){btn.disabled=false;btn.textContent='保存';});
 }
@@ -1170,7 +1194,7 @@ function hScrollable(el){
 })();
 
 document.addEventListener('click',function(e){
-  var t=e.target.closest('[data-tab],[data-hd],[data-spot],[data-del],[data-act],[data-pid],[data-area],[data-gps],[data-find],[data-pick],[data-clr],[data-rm],[data-td],[data-tres],[data-th]');
+  var t=e.target.closest('[data-tab],[data-hd],[data-spot],[data-del],[data-act],[data-pid],[data-area],[data-gps],[data-find],[data-pick],[data-clr],[data-rm],[data-td],[data-tres],[data-th],[data-edit]');
   if(!t)return;
   if(t.dataset.tab){animateTab(t.dataset.tab);return;}
   if(t.dataset.hd!=null){UI.hd=+t.dataset.hd;renderHourly();return;}
@@ -1200,6 +1224,11 @@ document.addEventListener('click',function(e){
   }
   if(t.dataset.clr){var cn=t.dataset.clr;delete S.pos[cn];store.set('ika.pos',S.pos);delete S.areaCache[cn];if(UI.area===cn)setArea('舞鶴');renderSpotSheet();renderAreaBar();return;}
   if(t.dataset.pid){if(t.src)openLb(t.src);return;}
+  if(t.dataset.edit){
+    var er=S.rec.find(function(r){return r.id===t.dataset.edit;});
+    if(er)openSheet(er);
+    return;
+  }
   if(t.dataset.del){
     if(confirm('この記録を削除しますか？')){
       var gone=S.rec.filter(function(r){return r.id===t.dataset.del;})[0];
