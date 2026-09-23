@@ -645,7 +645,7 @@ function chartSvg(ds,n){
 function renderToday(){
   var n=nowJST(),ds=n.date,w=S.wx[ds+'T'+pad(n.h)+':00'],t=S.tide[ds];
   var h=renderHero(n);
-  var rp=areaPos(UI.area),radarUrl='https://www.jma.go.jp/bosai/nowc/#zoom:10/lat:'+rp.lat+'/lon:'+rp.lon+'/colordepth:normal/elements:hrpns';
+  var rp=areaPos(UI.area),radarUrl='https://weather.yahoo.co.jp/weather/zoomradar/?lat='+rp.lat+'&lon='+rp.lon+'&z=10';
   h+='<a class="btn" href="'+esc(radarUrl)+'" target="_blank" rel="noopener" style="text-align:center;display:block;margin-top:10px">雨雲レーダーを見る（'+esc(UI.area)+'）</a>';
   h+='<div class="grid2" style="margin-top:10px">';
   h+='<div class="m"><p class="l">天気</p><p class="v">'+(w?ico(w.code,isNight(ds,n.h))+wxText(w.code):'—')+'</p><p class="s">'+(w?Math.round(w.temp)+'℃　降水 '+(w.pop==null?'—':w.pop+'%'):'')+'</p></div>';
